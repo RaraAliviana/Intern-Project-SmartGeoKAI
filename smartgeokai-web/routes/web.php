@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\AssetController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\ImportAssetController;
+use App\Http\Controllers\Admin\AuditLogController;
 
 
 /*
@@ -258,12 +259,11 @@ Route::middleware(['auth', 'admin'])
 
 
         // ====================================================================
-        // AUDIT LOG
+        // AUDIT LOG & AKTIVITAS PETUGAS
         // ====================================================================
 
-        Route::get('/log-audit', function () {
-            return view('admin.log-audit.index');
-        })->name('log-audit.index');
+        Route::get('/log-audit', [AuditLogController::class, 'index'])
+            ->name('log-audit.index');
 
 
         // ====================================================================

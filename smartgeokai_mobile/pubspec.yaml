@@ -1,0 +1,43 @@
+name: smartgeokai_mobile
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.8.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # HTTP client ke Laravel API
+  dio: ^5.7.0
+
+  # Simpan token Sanctum dengan aman
+  flutter_secure_storage: ^9.2.2
+
+  # State management
+  provider: ^6.1.2
+
+  # Ambil foto dari kamera/galeri
+  image_picker: ^1.1.2
+
+  # Ambil koordinat GPS
+  geolocator: ^13.0.1
+
+  # Peta (versi mobile dari Leaflet yang kita pakai di web)
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+
+  # Cupertino Icons font for iOS style icons
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true

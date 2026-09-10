@@ -38,7 +38,6 @@ class ImportAssetController extends Controller
             $file = fopen('php://output', 'w');
             fputs($file, "\xEF\xBB\xBF"); // UTF-8 BOM
 
-            // Header sesuai format contoh
             fputcsv($file, [
                 'ID Asset',
                 'Status',
@@ -55,7 +54,6 @@ class ImportAssetController extends Controller
                 'Google Maps',
             ]);
 
-            // Contoh baris dummy
             fputcsv($file, [
                 '17.02.0001',
                 'Clear',
@@ -68,7 +66,7 @@ class ImportAssetController extends Controller
                 '2323',
                 '-7.923456',
                 '110.234567',
-                'Aset tanah di pinggir rel',
+                'Aset tanah pinggir jalur rel',
                 'https://maps.google.com/?q=-7.923456,110.234567',
             ]);
 
@@ -86,14 +84,12 @@ class ImportAssetController extends Controller
         $file = $request->file('csv_file');
         $handle = fopen($file->getRealPath(), 'r');
 
-        // Lewati BOM jika ada
         $bom = fread($handle, 3);
         if ($bom !== "\xEF\xBB\xBF") {
             rewind($handle);
         }
 
-        // Ambil baris header
-        $header = fputcsv_get_array($handle);
+        $header = fgetcsv($handle, 2000, ',');
         if (!$header) {
             fclose($handle);
             return back()->with('error', 'File CSV kosong atau format tidak valid.');
@@ -101,14 +97,14 @@ class ImportAssetController extends Controller
 
         $successCount = 0;
         $failures = [];
-        $rowNum = 1; // Baris 1 adalah header
+        $importedAssets = []; // Penampung data sekilas yang berhasil diimpor
+        $rowNum = 1;
 
         DB::beginTransaction();
         try {
-            while (($row = fputcsv_get_array($handle)) !== false) {
+            while (($row = fgetcsv($handle, 2000, ',')) !== false) {
                 $rowNum++;
 
-                // Lewati baris kosong
                 if (empty(array_filter($row))) {
                     continue;
                 }
@@ -127,13 +123,11 @@ class ImportAssetController extends Controller
                 $description   = trim($row[11] ?? null);
                 $gmapsUrl      = trim($row[12] ?? null);
 
-                // --- VALIDASI TIAP BARIS ---
                 $errors = [];
 
                 if (empty($idAsset)) {
                     $errors[] = 'ID Asset wajib diisi.';
                 } else {
-                    // Cek keunikan ID Asset
                     $exists = Asset::where('id_asset', $idAsset)->exists();
                     if ($exists) {
                         $errors[] = "ID Asset '$idAsset' sudah terdaftar di database.";
@@ -144,50 +138,45 @@ class ImportAssetController extends Controller
                     $errors[] = "Status '$status' tidak valid (harus: Clear, Proses, atau Masalah).";
                 }
 
-                // Cari Provinsi
                 $province = null;
                 if (!empty($provinceName)) {
                     $province = Province::where('name', 'LIKE', "%$provinceName%")->first();
                     if (!$province) {
-                        $errors[] = "Provinsi '$provinceName' tidak ditemukan di database.";
+                        $errors[] = "Provinsi '$provinceName' tidak ditemukan.";
                     }
                 } else {
                     $errors[] = 'Provinsi wajib diisi.';
                 }
 
-                // Cari Kabupaten/Kota
                 $regency = null;
                 if (!empty($regencyName) && $province) {
                     $regency = Regency::where('province_id', $province->id)
                         ->where('name', 'LIKE', "%$regencyName%")
                         ->first();
                     if (!$regency) {
-                        $errors[] = "Kabupaten/Kota '$regencyName' tidak ditemukan pada provinsi $provinceName.";
+                        $errors[] = "Kabupaten/Kota '$regencyName' tidak ditemukan.";
                     }
                 } elseif (empty($regencyName)) {
                     $errors[] = 'Kabupaten/Kota wajib diisi.';
                 }
 
-                // Cari Kecamatan
                 $district = null;
                 if (!empty($districtName) && $regency) {
                     $district = District::where('regency_id', $regency->id)
                         ->where('name', 'LIKE', "%$districtName%")
                         ->first();
                     if (!$district) {
-                        $errors[] = "Kecamatan '$districtName' tidak ditemukan pada kabupaten $regencyName.";
+                        $errors[] = "Kecamatan '$districtName' tidak ditemukan.";
                     }
                 } elseif (empty($districtName)) {
                     $errors[] = 'Kecamatan wajib diisi.';
                 }
 
-                // Bersihkan nilai area_m2
                 $areaM2Clean = str_replace(['.', ','], ['', '.'], $areaM2);
                 if (!is_numeric($areaM2Clean)) {
                     $errors[] = 'Luas (m2) harus berupa angka.';
                 }
 
-                // Jika ada error pada baris ini, catat dan lanjut ke baris berikutnya
                 if (!empty($errors)) {
                     $failures[] = [
                         'row'      => $rowNum,
@@ -197,8 +186,8 @@ class ImportAssetController extends Controller
                     continue;
                 }
 
-                // --- SIMPAN BARIS VALID ---
-                Asset::create([
+                // Simpan ke database
+                $asset = Asset::create([
                     'id_asset'       => $idAsset,
                     'status'         => $status,
                     'province_id'    => $province->id,
@@ -215,6 +204,17 @@ class ImportAssetController extends Controller
                     'created_by'     => Auth::id(),
                 ]);
 
+                // Simpan data sekilas untuk ditayangkan di preview
+                $importedAssets[] = [
+                    'id_asset'      => $idAsset,
+                    'status'        => $status,
+                    'province_name' => $province->name,
+                    'regency_name'  => $regency->name,
+                    'district_name' => $district->name,
+                    'asset_type'    => $assetType ?: '-',
+                    'area_m2'       => (float) $areaM2Clean,
+                ];
+
                 $successCount++;
             }
 
@@ -229,18 +229,11 @@ class ImportAssetController extends Controller
 
         return back()->with([
             'import_summary' => [
-                'success_count' => $successCount,
-                'failure_count' => count($failures),
-                'failures'      => $failures,
+                'success_count'   => $successCount,
+                'failure_count'   => count($failures),
+                'failures'        => $failures,
+                'imported_assets' => $importedAssets, // Dikirim ke session
             ],
         ]);
     }
-}
-
-/**
- * Helper pembacaan baris CSV aman.
- */
-function fputcsv_get_array($handle)
-{
-    return fgetcsv($handle, 2000, ',');
 }

@@ -41,7 +41,7 @@
     {{-- HASIL / RINGKASAN IMPORT --}}
     @if(session('import_summary'))
         @php $summary = session('import_summary'); @endphp
-        <div class="space-y-4">
+        <div class="space-y-6">
 
             {{-- STATISTIK IMPORT --}}
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -51,7 +51,7 @@
                             <i class="fa-solid fa-check text-lg"></i>
                         </div>
                         <div>
-                            <p class="text-xs font-medium text-green-600 uppercase">Berhasil Diimpor</p>
+                            <p class="text-xs font-medium text-green-600 uppercase">BERHASIL DIIMPOR</p>
                             <p class="text-2xl font-bold text-green-800">{{ $summary['success_count'] }} Data</p>
                         </div>
                     </div>
@@ -63,7 +63,7 @@
                             <i class="fa-solid fa-xmark text-lg"></i>
                         </div>
                         <div>
-                            <p class="text-xs font-medium text-red-600 uppercase">Gagal Diimpor</p>
+                            <p class="text-xs font-medium text-red-600 uppercase">GAGAL DIIMPOR</p>
                             <p class="text-2xl font-bold text-red-800">{{ $summary['failure_count'] }} Data</p>
                         </div>
                     </div>
@@ -93,6 +93,72 @@
                                         <td class="px-5 py-3 font-semibold text-gray-800">Baris {{ $fail['row'] }}</td>
                                         <td class="px-5 py-3 font-mono text-gray-700">{{ $fail['id_asset'] }}</td>
                                         <td class="px-5 py-3 text-red-600 font-medium">{{ $fail['reasons'] }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            @endif
+
+            {{-- TABEL SEKILAS DATA YANG BERHASIL DIIMPOR --}}
+            @if(!empty($summary['imported_assets']))
+                <div class="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-theme-xs">
+                    <div class="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+                        <div>
+                            <h3 class="text-base font-semibold text-gray-800">
+                                <i class="fa-solid fa-circle-check text-green-500 mr-1.5"></i> Sekilas Data Yang Berhasil Diimpor
+                            </h3>
+                            <p class="text-xs text-gray-500 mt-0.5">
+                                Menampilkan {{ count($summary['imported_assets']) }} data aset yang baru saja masuk ke database
+                            </p>
+                        </div>
+                        <a href="{{ route('admin.assets.index') }}" class="text-xs font-semibold text-brand-500 hover:text-brand-600">
+                            Lihat Semua Aset &rarr;
+                        </a>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm text-gray-600">
+                            <thead class="bg-gray-50/50 text-xs uppercase text-gray-500">
+                                <tr>
+                                    <th class="px-5 py-3.5 font-medium">ID Asset</th>
+                                    <th class="px-5 py-3.5 font-medium">Status</th>
+                                    <th class="px-5 py-3.5 font-medium">Provinsi</th>
+                                    <th class="px-5 py-3.5 font-medium">Kabupaten/Kota</th>
+                                    <th class="px-5 py-3.5 font-medium">Kecamatan</th>
+                                    <th class="px-5 py-3.5 font-medium">Jenis Aset</th>
+                                    <th class="px-5 py-3.5 font-medium">Luas m²</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                @foreach($summary['imported_assets'] as $asset)
+                                    <tr class="hover:bg-gray-50/50 transition">
+                                        <td class="px-5 py-3.5 font-semibold text-gray-800 font-mono">
+                                            {{ $asset['id_asset'] }}
+                                        </td>
+                                        <td class="px-5 py-3.5">
+                                            @if($asset['status'] === 'Clear')
+                                                <span class="inline-flex items-center gap-1.5 rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-semibold text-green-700">
+                                                    <span class="h-1.5 w-1.5 rounded-full bg-green-500"></span>
+                                                    Clear
+                                                </span>
+                                            @elseif($asset['status'] === 'Proses')
+                                                <span class="inline-flex items-center gap-1.5 rounded-full bg-yellow-50 px-2.5 py-0.5 text-xs font-semibold text-yellow-700">
+                                                    <span class="h-1.5 w-1.5 rounded-full bg-yellow-500"></span>
+                                                    Proses
+                                                </span>
+                                            @else
+                                                <span class="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-semibold text-red-700">
+                                                    <span class="h-1.5 w-1.5 rounded-full bg-red-500"></span>
+                                                    {{ $asset['status'] }}
+                                                </span>
+                                            @endif
+                                        </td>
+                                        <td class="px-5 py-3.5">{{ $asset['province_name'] }}</td>
+                                        <td class="px-5 py-3.5">{{ $asset['regency_name'] }}</td>
+                                        <td class="px-5 py-3.5">{{ $asset['district_name'] }}</td>
+                                        <td class="px-5 py-3.5">{{ $asset['asset_type'] }}</td>
+                                        <td class="px-5 py-3.5 font-medium">{{ number_format($asset['area_m2'], 0, ',', '.') }}</td>
                                     </tr>
                                 @endforeach
                             </tbody>
