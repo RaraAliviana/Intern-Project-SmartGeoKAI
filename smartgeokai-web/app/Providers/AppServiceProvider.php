@@ -2,8 +2,6 @@
 
 namespace App\Providers;
 
-use App\Models\StatusApproval;
-use App\Observers\StatusApprovalObserver;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Pagination\Paginator;
 use App\Models\Asset;
@@ -15,7 +13,6 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        StatusApproval::observe(StatusApprovalObserver::class);
         Paginator::useBootstrapFive();
         Asset::observe(AssetObserver::class);
     }

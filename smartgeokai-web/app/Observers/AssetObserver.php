@@ -3,68 +3,37 @@
 namespace App\Observers;
 
 use App\Models\Asset;
-use App\Models\AuditLog;
-use Illuminate\Support\Facades\Auth;
+use App\Models\User;
+use App\Notifications\AssetReportedProblem;
+use Illuminate\Support\Facades\Notification;
 
 class AssetObserver
 {
     /**
-     * Catat log saat Aset baru dibuat.
+     * Terpicu setiap kali ada aset baru yang langsung dibuat dengan status Masalah.
      */
     public function created(Asset $asset): void
     {
-        AuditLog::create([
-            'user_id'    => Auth::id(),
-            'asset_id'   => $asset->id,
-            'action'     => 'create',
-            'field_name' => 'ALL_FIELDS',
-            'new_value'  => "Asset {$asset->id_asset} berhasil dibuat.",
-            'ip_address' => request()->ip(),
-            'user_agent' => request()->userAgent(),
-        ]);
-    }
-
-    /**
-     * Catat log perubahan per-field saat Aset diupdate.
-     */
-    public function updated(Asset $asset): void
-    {
-        $dirty = $asset->getDirty();
-
-        foreach ($dirty as $field => $newValue) {
-            // Abaikan timestamps
-            if (in_array($field, ['updated_at', 'created_at'])) {
-                continue;
-            }
-
-            $oldValue = $asset->getOriginal($field);
-
-            AuditLog::create([
-                'user_id'    => Auth::id(),
-                'asset_id'   => $asset->id,
-                'action'     => 'update',
-                'field_name' => $field,
-                'old_value'  => is_array($oldValue) ? json_encode($oldValue) : (string) $oldValue,
-                'new_value'  => is_array($newValue) ? json_encode($newValue) : (string) $newValue,
-                'ip_address' => request()->ip(),
-                'user_agent' => request()->userAgent(),
-            ]);
+        if ($asset->status === 'Masalah') {
+            $this->notifyAdmins($asset);
         }
     }
 
     /**
-     * Catat log saat Aset dihapus.
+     * Terpicu setiap kali status aset berubah MENJADI Masalah
+     * (baik diedit dari web oleh admin, maupun dari mobile oleh petugas).
      */
-    public function deleted(Asset $asset): void
+    public function updated(Asset $asset): void
     {
-        AuditLog::create([
-            'user_id'    => Auth::id(),
-            'asset_id'   => $asset->id,
-            'action'     => 'delete',
-            'field_name' => 'ALL_FIELDS',
-            'old_value'  => "Asset {$asset->id_asset} dihapus.",
-            'ip_address' => request()->ip(),
-            'user_agent' => request()->userAgent(),
-        ]);
+        if ($asset->isDirty('status') && $asset->status === 'Masalah') {
+            $this->notifyAdmins($asset);
+        }
+    }
+
+    private function notifyAdmins(Asset $asset): void
+    {
+        $admins = User::admins()->get();
+
+        Notification::send($admins, new AssetReportedProblem($asset));
     }
 }
