@@ -8,7 +8,9 @@ plugins {
 android {
     namespace = "com.example.smartgeokai_mobile"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    
+    // Tentukan versi NDK tertinggi yang diminta oleh plugin:
+    ndkVersion = "27.0.12077973"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11

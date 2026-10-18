@@ -12,11 +12,15 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // Alias Middleware
         $middleware->alias([
-            'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
-            'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
+            'superadmin' => \App\Http\Middleware\SuperAdminOnly::class,
+            'admin'      => \App\Http\Middleware\AdminOnly::class, // Jika ingin memakai middleware AdminOnly baru
+            // 'admin'   => \App\Http\Middleware\EnsureUserIsAdmin::class, // (Gunakan ini jika masih menggunakan class lama)
+            'guest'      => \App\Http\Middleware\RedirectIfAuthenticated::class,
         ]);
 
+        // Middleware Group
         $middleware->group('auth', [
             \App\Http\Middleware\PreventBackHistory::class,
         ]);

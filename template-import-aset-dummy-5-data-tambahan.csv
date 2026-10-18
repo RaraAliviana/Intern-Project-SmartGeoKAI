@@ -1,0 +1,6 @@
+ID Asset,Status,Provinsi,Kabupaten/Kota,Kecamatan,Jenis Aset,Klasifikasi,Kelompok,Luas m2,Latitude,Longitude,Keterangan,Google Maps
+34.01.0102,Clear,Daerah Istimewa Yogyakarta,Kabupaten Kulon Progo,Wates,Tanah,Operasional,Produksi,3650,-7.8595,110.1598,Lahan pendukung operasional dan akses kendaraan,"https://maps.google.com/?q=-7.859500,110.159800"
+34.02.0102,Proses,Daerah Istimewa Yogyakarta,Kabupaten Bantul,Banguntapan,Bangunan,Fasilitas,Non Produksi,760,-7.7994,110.4137,Bangunan fasilitas administrasi dalam proses pemeliharaan,"https://maps.google.com/?q=-7.799400,110.413700"
+33.11.0102,Clear,Jawa Tengah,Kabupaten Sukoharjo,Grogol,Tanah,ROW,Produksi,5900,-7.6208,110.8175,Lahan ROW yang telah terverifikasi batasnya,"https://maps.google.com/?q=-7.620800,110.817500"
+33.12.0102,Masalah,Jawa Tengah,Kabupaten Wonogiri,Jatisrono,Bangunan,Operasional,Non Produksi,430,-7.8062,111.0621,Bangunan operasional memerlukan perbaikan ringan,"https://maps.google.com/?q=-7.806200,111.062100"
+33.08.0102,Proses,Jawa Tengah,Kabupaten Magelang,Borobudur,Tanah,ROW,Produksi,8200,-7.6079,110.2038,Lahan ROW dalam tahap verifikasi dokumen,"https://maps.google.com/?q=-7.607900,110.203800"

@@ -38,6 +38,34 @@ class DashboardStats extends Component
         $provinceLabels = $assetsPerProvince->pluck('province_name');
         $provinceData = $assetsPerProvince->pluck('total');
 
+        // ===== Peta: marker seluruh aset yang punya koordinat =====
+        $mapMarkers = Asset::query()
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            // Dibatasi wilayah Jawa Tengah & DIY (sama seperti peta sebelumnya)
+            ->whereBetween('latitude', [-8.80, -6.30])
+            ->whereBetween('longitude', [108.50, 111.60])
+            ->limit(2000)
+            ->get(['id', 'id_asset', 'latitude', 'longitude', 'status', 'asset_type', 'description'])
+            ->map(function (Asset $asset) {
+                return [
+                    'id' => $asset->id,
+                    'idAsset' => $asset->id_asset,
+                    'name' => $asset->description ?? $asset->asset_type,
+                    'lat' => (float) $asset->latitude,
+                    'lng' => (float) $asset->longitude,
+                    'status' => $asset->status,
+                    'color' => match ($asset->status) {
+                        'Clear' => '#12b76a',
+                        'Proses' => '#f79009',
+                        'Masalah' => '#f04438',
+                        default => '#667085',
+                    },
+                    'url' => route('admin.assets.show', $asset->id),
+                ];
+            })
+            ->values();
+
         return view('livewire.admin.dashboard-stats', [
             'totalAssets' => $totalAssets,
             'clearCount' => $pieData['Clear'],
@@ -47,10 +75,9 @@ class DashboardStats extends Component
             'pieData' => $pieData,
             'provinceLabels' => $provinceLabels,
             'provinceData' => $provinceData,
-            // Hash data untuk wire:key — berubah setiap kali angkanya berubah,
-            // memaksa Livewire re-render elemen chart (Alpine x-init ikut jalan ulang)
             'pieHash' => md5(json_encode($pieData)),
             'barHash' => md5(json_encode([$provinceLabels, $provinceData])),
+            'mapMarkers' => $mapMarkers,
         ]);
     }
 }

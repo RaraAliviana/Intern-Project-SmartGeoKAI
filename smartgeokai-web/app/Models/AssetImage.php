@@ -16,8 +16,6 @@ class AssetImage extends Model
         'file_path',
         'file_name',
         'file_size',
-        'is_before_repair',
-        'is_after_repair',
         'uploaded_by',
     ];
 

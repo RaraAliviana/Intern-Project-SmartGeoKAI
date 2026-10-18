@@ -1,0 +1,11 @@
+ID Asset,Status,Provinsi,Kabupaten/Kota,Kecamatan,Jenis Aset,Klasifikasi,Kelompok,Luas m2,Latitude,Longitude,Keterangan,Google Maps
+17.02.0101,Clear,Daerah Istimewa Yogyakarta,Kabupaten Bantul,Srandakan,Tanah,ROW,Produksi,2500,-7.9251,110.2328,Lahan jalur rel area operasional,"https://maps.google.com/?q=-7.925100,110.232800"
+17.71.0101,Proses,Daerah Istimewa Yogyakarta,Kota Yogyakarta,Gondokusuman,Bangunan,Fasilitas,Produksi,1850,-7.7829,110.3812,Bangunan fasilitas dalam proses renovasi,"https://maps.google.com/?q=-7.782900,110.381200"
+34.10.0101,Clear,Daerah Istimewa Yogyakarta,Kabupaten Sleman,Mlati,Tanah,Operasional,Non Produksi,7200,-7.735,110.358,Lahan pendukung kegiatan operasional,"https://maps.google.com/?q=-7.735000,110.358000"
+34.03.0101,Masalah,Daerah Istimewa Yogyakarta,Kabupaten Gunungkidul,Wonosari,Tanah,ROW,Produksi,6300,-7.965,110.603,Terdapat penggunaan lahan oleh pihak ketiga,"https://maps.google.com/?q=-7.965000,110.603000"
+33.72.0101,Clear,Jawa Tengah,Kota Surakarta,Laweyan,Bangunan,Fasilitas,Non Produksi,320,-7.5653,110.7954,Bangunan fasilitas dalam kondisi baik dan aktif,"https://maps.google.com/?q=-7.565300,110.795400"
+33.14.0101,Proses,Jawa Tengah,Kabupaten Sragen,Sragen,Tanah,Operasional,Produksi,4100,-7.427,111.022,Pengajuan pemanfaatan lahan sedang diproses,"https://maps.google.com/?q=-7.427000,111.022000"
+33.15.0101,Clear,Jawa Tengah,Kabupaten Grobogan,Purwodadi,Bangunan,Fasilitas,Produksi,980,-7.087,110.915,Gudang penyimpanan perlengkapan operasional,"https://maps.google.com/?q=-7.087000,110.915000"
+33.12.0101,Masalah,Jawa Tengah,Kabupaten Wonogiri,Wonogiri,Tanah,ROW,Produksi,5400,-7.817,110.92,Perlu penertiban batas lahan dengan lingkungan sekitar,"https://maps.google.com/?q=-7.817000,110.920000"
+33.08.0101,Clear,Jawa Tengah,Kabupaten Magelang,Mertoyudan,Bangunan,Operasional,Non Produksi,480,-7.52,110.226,Pos jaga operasional dalam kondisi aktif,"https://maps.google.com/?q=-7.520000,110.226000"
+33.71.0101,Proses,Jawa Tengah,Kota Magelang,Magelang Tengah,Tanah,Operasional,Non Produksi,8700,-7.47,110.217,Proses verifikasi dokumen kepemilikan aset,"https://maps.google.com/?q=-7.470000,110.217000"

@@ -34,18 +34,58 @@ class User extends Authenticatable
         ];
     }
 
+    /**
+     * Memeriksa apakah pengguna boleh mengakses panel admin.
+     * Admin dan Super Admin sama-sama diizinkan.
+     */
     public function isAdmin(): bool
     {
-        return $this->role === 'admin';
+        return in_array($this->role, ['admin', 'superadmin'], true);
     }
 
+    /**
+     * Memeriksa apakah pengguna adalah Super Admin.
+     */
+    public function isSuperAdmin(): bool
+    {
+        return $this->role === 'superadmin';
+    }
+
+    /**
+     * Relasi wilayah provinsi pengguna.
+     */
     public function province()
     {
         return $this->belongsTo(Province::class);
     }
 
+    /**
+     * Scope untuk mengambil akun Admin yang aktif.
+     */
     public function scopeAdmins($query)
     {
-        return $query->where('role', 'admin')->where('is_active', true);
+        return $query
+            ->where('role', 'admin')
+            ->where('is_active', true);
+    }
+
+    /**
+     * Scope untuk mengambil akun Super Admin yang aktif.
+     */
+    public function scopeSuperAdmins($query)
+    {
+        return $query
+            ->where('role', 'superadmin')
+            ->where('is_active', true);
+    }
+
+    /**
+     * Scope untuk mengambil semua pengguna web yang aktif.
+     */
+    public function scopeWebAdmins($query)
+    {
+        return $query
+            ->whereIn('role', ['admin', 'superadmin'])
+            ->where('is_active', true);
     }
 }

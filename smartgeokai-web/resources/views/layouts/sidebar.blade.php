@@ -17,12 +17,9 @@
         :class="(expanded || mobileOpen) ? 'justify-start' : 'lg:justify-center'"
     >
 
-        <!-- STRUKTUR LAMA (Ikon Lingkaran SG + Teks) -->
         <a href="{{ route('admin.dashboard') }}" class="flex items-center gap-3 px-4 py-3">
-            <!-- Logo KAI -->
             <img src="{{ asset('images/logo-kai.png') }}" alt="Logo KAI" class="h-9 w-auto object-contain">
-            
-            <!-- Teks SmartGeo -->
+
             <div>
                 <h1 class="text-base font-bold text-gray-800">SmartGeoKAI</h1>
                 <p class="text-xs text-brand-500 font-medium">Asset Management</p>
@@ -64,172 +61,35 @@
 
             <ul class="flex flex-col gap-1">
 
-
                 {{-- ========================================================
-                     DASHBOARD
-                ========================================================= --}}
-
-                @php
-                    $dashboardActive = request()->routeIs('admin.dashboard');
-                @endphp
-
-                <li>
-
-                    <a
-                        href="{{ route('admin.dashboard') }}"
-                        title="Dashboard"
-                        class="group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors
-                        {{ $dashboardActive
-                            ? 'bg-brand-50 text-brand-600'
-                            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-800'
-                        }}"
-                        :class="!(expanded || mobileOpen) && 'lg:justify-center'"
-                    >
-
-                        <i
-                            class="fa-solid fa-gauge-high w-5 text-center
-                            {{ $dashboardActive
-                                ? 'text-brand-500'
-                                : 'text-gray-400 group-hover:text-gray-600'
-                            }}"
-                        ></i>
-
-                        <span
-                            x-show="expanded || mobileOpen"
-                            x-cloak
-                            class="whitespace-nowrap"
-                        >
-                            Dashboard
-                        </span>
-
-                    </a>
-
-                </li>
-
-
-                {{-- ========================================================
-                     PETA & ASET
-                ========================================================= --}}
-
-                @php
-                    $assetMenuActive = request()->routeIs('admin.assets.*');
-                @endphp
-
-                <li
-                    x-data="{
-                        assetOpen: {{ $assetMenuActive ? 'true' : 'false' }}
-                    }"
-                >
-
-                    {{-- Parent --}}
-                    <button
-                        type="button"
-                        title="Peta & Aset"
-                        @click="assetOpen = !assetOpen"
-                        class="group relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors
-                        {{ $assetMenuActive
-                            ? 'bg-brand-50 text-brand-600'
-                            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-800'
-                        }}"
-                        :class="!(expanded || mobileOpen) && 'lg:justify-center'"
-                    >
-
-                        <i
-                            class="fa-solid fa-map-location-dot w-5 text-center
-                            {{ $assetMenuActive
-                                ? 'text-brand-500'
-                                : 'text-gray-400 group-hover:text-gray-600'
-                            }}"
-                        ></i>
-
-
-                        <span
-                            x-show="expanded || mobileOpen"
-                            x-cloak
-                            class="flex-1 whitespace-nowrap text-left"
-                        >
-                            Peta & Aset
-                        </span>
-
-
-                        <i
-                            x-show="expanded || mobileOpen"
-                            x-cloak
-                            class="fa-solid fa-chevron-down text-[10px] transition-transform duration-200"
-                            :class="assetOpen ? 'rotate-180' : ''"
-                        ></i>
-
-                    </button>
-
-
-                    {{-- Submenu --}}
-                    <div
-                        x-show="assetOpen && (expanded || mobileOpen)"
-                        x-cloak
-                        class="mt-1 space-y-1 pl-8"
-                    >
-
-                        {{-- Peta Aset --}}
-                        <a
-                            href="{{ route('admin.assets.map') }}"
-                            class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors
-                            {{ request()->routeIs('admin.assets.map')
-                                ? 'bg-brand-50 font-medium text-brand-600'
-                                : 'text-gray-500 hover:bg-gray-100 hover:text-gray-800'
-                            }}"
-                        >
-
-                            <i class="fa-solid fa-map text-xs"></i>
-
-                            <span>
-                                Peta Aset
-                            </span>
-
-                        </a>
-
-
-                        {{-- Daftar Aset --}}
-                        <a
-                            href="{{ route('admin.assets.index') }}"
-                            class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors
-                            {{ request()->routeIs('admin.assets.index')
-                                ? 'bg-brand-50 font-medium text-brand-600'
-                                : 'text-gray-500 hover:bg-gray-100 hover:text-gray-800'
-                            }}"
-                        >
-
-                            <i class="fa-solid fa-list text-xs"></i>
-
-                            <span>
-                                Daftar Aset
-                            </span>
-
-                        </a>
-
-                    </div>
-
-                </li>
-
-
-                {{-- ========================================================
-                     MENU LAINNYA
+                     SEMUA MENU (Dashboard, Aset, dan lainnya)
+                     Peta Aset sudah dipindah ke dalam halaman Dashboard,
+                     jadi "Peta & Aset" tidak lagi jadi submenu terpisah —
+                     cukup 1 link "Aset" yang mengarah ke Daftar Aset.
                 ========================================================= --}}
 
                 @php
                     $menuItems = [
 
                         [
+                            'route' => 'admin.dashboard',
+                            'active' => 'admin.dashboard',
+                            'icon' => 'fa-gauge-high',
+                            'label' => 'Dashboard',
+                        ],
+
+                        [
+                            'route' => 'admin.assets.index',
+                            'active' => 'admin.assets.*',
+                            'icon' => 'fa-map-location-dot',
+                            'label' => 'Aset',
+                        ],
+
+                        [
                             'route' => 'admin.users.index',
                             'active' => 'admin.users.*',
                             'icon' => 'fa-users',
                             'label' => 'Manajemen Pengguna',
-                        ],
-
-                        [
-                            'route' => 'admin.approvals.index',
-                            'active' => 'admin.approvals.*',
-                            'icon' => 'fa-circle-check',
-                            'label' => 'Approval',
                         ],
 
                         [
@@ -258,13 +118,6 @@
                             'active' => 'admin.log-audit.*',
                             'icon' => 'fa-clock-rotate-left',
                             'label' => 'Log Audit',
-                        ],
-
-                        [
-                            'route' => 'admin.backup.index',
-                            'active' => 'admin.backup.*',
-                            'icon' => 'fa-database',
-                            'label' => 'Backup',
                         ],
 
                     ];

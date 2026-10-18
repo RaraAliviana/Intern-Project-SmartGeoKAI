@@ -65,9 +65,6 @@
                     <a href="{{ route('admin.profile.index') }}" class="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-gray-50">
                         <i class="fa-solid fa-user w-4 text-gray-400"></i> Profil Saya
                     </a>
-                    <a href="{{ route('admin.backup.index') }}" class="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-gray-50">
-                        <i class="fa-solid fa-gear w-4 text-gray-400"></i> Pengaturan
-                    </a>
                     <hr class="my-2 border-gray-100">
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf

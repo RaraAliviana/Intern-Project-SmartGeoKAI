@@ -2,31 +2,22 @@
 <html lang="id">
 
 <head>
-
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>SmartGeoKAI - @yield('title', 'Dashboard')</title>
+    <title>@yield('title', 'SmartGeoKAI') - PT Kereta Api Indonesia</title>
+
+    <!-- FAVICON LOGO KAI -->
+    <link rel="icon" type="image/png" href="{{ asset('images/logo-kai.png') }}">
 
     {{-- Font --}}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
-    {{-- Font Awesome (untuk ikon) --}}
+    {{-- Font Awesome (Ikon) --}}
     <link href="{{ asset('vendor/fontawesome-7.3.1/css/all.min.css') }}" rel="stylesheet">
-
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>@yield('title', 'SmartGeoKAI') - PT Kereta Api Indonesia</title>
-
-        <!-- FAVICON LOGO KAI -->
-        <link rel="icon" type="image/png" href="{{ asset('images/logo-kai.png') }}">
-        
-        <!-- Rest of CSS / Stylesheet links -->
-    </head>
 
     {{-- Tailwind CSS (Play CDN) --}}
     <script src="https://cdn.tailwindcss.com"></script>
