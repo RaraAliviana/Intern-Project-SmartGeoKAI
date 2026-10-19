@@ -31,8 +31,10 @@ class AssetModel {
   final String regency;
   final String district;
   final AssetStatus status;
-  final double? latitude;
-  final double? longitude;
+  final double?   latitude;
+  final double?   longitude;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
 
   const AssetModel({
     required this.id,
@@ -46,6 +48,8 @@ class AssetModel {
     required this.status,
     required this.latitude,
     required this.longitude,
+    required this.createdAt,
+    required this.updatedAt,
   });
 
   bool get hasLocation => latitude != null && longitude != null;
@@ -59,6 +63,15 @@ class AssetModel {
   String get regionText => [district, regency, province]
       .where((e) => e.isNotEmpty)
       .join(', ');
+
+  // Waktu aktivitas terakhir pada aset ini
+  DateTime? get activityTime => updatedAt ?? createdAt;
+
+  // Aset baru ditambahkan (belum pernah diubah setelah dibuat)
+  bool get isNewlyAdded =>
+      createdAt != null &&
+      (updatedAt == null ||
+          updatedAt!.difference(createdAt!).inSeconds.abs() < 5);
 
   // ── Parsing: SESUAIKAN DI SINI kalau nama field backend berbeda ──────
   factory AssetModel.fromJson(Map<String, dynamic> json) {
@@ -82,6 +95,8 @@ class AssetModel {
       status:   AssetStatus.parse(json['status']),
       latitude:  valid ? lat : null,
       longitude: valid ? lng : null,
+      createdAt: _date(json['created_at'] ?? json['createdAt']),
+      updatedAt: _date(json['updated_at'] ?? json['updatedAt']),
     );
   }
 
@@ -100,4 +115,7 @@ class AssetModel {
   }
 
   static double? _num(dynamic v) => v == null ? null : double.tryParse(v.toString());
+
+  static DateTime? _date(dynamic v) =>
+      v == null ? null : DateTime.tryParse(v.toString());
 }
