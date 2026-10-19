@@ -11,26 +11,26 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # HTTP client ke Laravel API
+  # HTTP Client & Storage
   dio: ^5.7.0
-
-  # Simpan token Sanctum dengan aman
+  http: ^1.2.0
+  shared_preferences: ^2.2.3
   flutter_secure_storage: ^9.2.2
 
-  # State management
+  # State Management
   provider: ^6.1.2
 
-  # Ambil foto dari kamera/galeri
+  # Media & Location
   image_picker: ^1.1.2
-
-  # Ambil koordinat GPS
   geolocator: ^13.0.1
 
-  # Peta (versi mobile dari Leaflet yang kita pakai di web)
+  # Maps
   flutter_map: ^7.0.2
   latlong2: ^0.9.1
 
-  # Cupertino Icons font for iOS style icons
+  # UI & Icons
+  google_fonts: ^6.1.0
+  iconsax_flutter: ^1.0.0
   cupertino_icons: ^1.0.8
 
 dev_dependencies:

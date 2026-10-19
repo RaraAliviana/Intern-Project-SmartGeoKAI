@@ -3,24 +3,32 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
+    // Login
     public function login(Request $request)
     {
         $credentials = $request->validate([
             'username' => ['required', 'string'],
             'password' => ['required', 'string'],
-            'device_name' => ['required', 'string'], // identitas device, mis. "Xiaomi Redmi Note 12"
+            'device_name' => ['required', 'string'],
         ]);
 
-        $user = \App\Models\User::where('username', $credentials['username'])->first();
+        $user = User::where(
+            'username',
+            $credentials['username']
+        )->first();
 
-        if (! $user || ! Hash::check($credentials['password'], $user->password)) {
+        if (
+            ! $user ||
+            ! Hash::check($credentials['password'], $user->password)
+        ) {
             throw ValidationException::withMessages([
                 'username' => ['Username atau password salah.'],
             ]);
@@ -28,18 +36,24 @@ class AuthController extends Controller
 
         if (! $user->is_active) {
             throw ValidationException::withMessages([
-                'username' => ['Akun kamu telah dinonaktifkan. Hubungi administrator.'],
+                'username' => [
+                    'Akun kamu telah dinonaktifkan. Hubungi administrator.',
+                ],
             ]);
         }
 
-        // API mobile ini KHUSUS untuk petugas — admin tetap login lewat web
+        // API mobile khusus petugas
         if ($user->role !== 'petugas') {
             throw ValidationException::withMessages([
-                'username' => ['Aplikasi mobile ini khusus untuk Petugas.'],
+                'username' => [
+                    'Aplikasi mobile ini khusus untuk Petugas.',
+                ],
             ]);
         }
 
-        $token = $user->createToken($credentials['device_name'])->plainTextToken;
+        $token = $user->createToken(
+            $credentials['device_name']
+        )->plainTextToken;
 
         return response()->json([
             'success' => true,
@@ -59,9 +73,10 @@ class AuthController extends Controller
         ]);
     }
 
+    // Logout
     public function logout(Request $request)
     {
-        // Cabut hanya token yang sedang dipakai request ini (device ini saja)
+        // Cabut token perangkat yang sedang digunakan
         $request->user()->currentAccessToken()->delete();
 
         return response()->json([
@@ -70,6 +85,7 @@ class AuthController extends Controller
         ]);
     }
 
+    // Informasi user yang sedang login
     public function me(Request $request)
     {
         $user = $request->user();
@@ -86,6 +102,77 @@ class AuthController extends Controller
                 'province_id' => $user->province_id,
                 'province_name' => $user->province?->name,
             ],
+        ]);
+    }
+
+    // Update profil
+    public function updateProfile(Request $request)
+    {
+        $user = $request->user();
+
+        $data = $request->validate([
+            'full_name' => [
+                'required',
+                'string',
+                'min:3',
+                'max:255',
+            ],
+            'nip' => [
+                'required',
+                'string',
+                'max:25',
+                Rule::unique('users', 'nip')->ignore($user->id),
+            ],
+        ]);
+
+        $user->update($data);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Profil berhasil diperbarui.',
+            'user' => $user->fresh(),
+        ]);
+    }
+
+    // Ganti password
+    public function changePassword(Request $request)
+    {
+        $request->validate([
+            'current_password' => [
+                'required',
+                'string',
+            ],
+            'password' => [
+                'required',
+                'string',
+                'min:8',
+                'confirmed',
+                'different:current_password',
+            ],
+        ]);
+
+        $user = $request->user();
+
+        if (
+            ! Hash::check(
+                $request->current_password,
+                $user->password
+            )
+        ) {
+            throw ValidationException::withMessages([
+                'current_password' => [
+                    'Password lama tidak sesuai.',
+                ],
+            ]);
+        }
+
+        $user->update([
+            'password' => Hash::make($request->password),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Password berhasil diganti.',
         ]);
     }
 }
