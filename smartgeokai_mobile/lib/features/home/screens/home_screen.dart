@@ -78,22 +78,19 @@ class _HomeScreenState extends State<HomeScreen> {
         index: _index,
         children: items.map((e) => e.page).toList(),
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: _goTo,
-        backgroundColor: AppColors.white,
-        indicatorColor: AppColors.primaryLight,
-        height: 68,
-        destinations: items
-            .map(
-              (e) => NavigationDestination(
-                icon: Icon(e.icon, color: AppColors.gray500),
-                selectedIcon: Icon(e.activeIcon, color: AppColors.primary),
-                label: e.label,
-              ),
-            )
-            .toList(),
-      ),
+            bottomNavigationBar: NavigationBar(
+              selectedIndex: _index,
+              onDestinationSelected: _goTo,
+              destinations: items
+                  .map(
+                    (e) => NavigationDestination(
+                      icon: Icon(e.icon),
+                      selectedIcon: Icon(e.activeIcon),
+                      label: e.label,
+                    ),
+                  )
+                  .toList(),
+            ),
     );
   }
 }

@@ -23,6 +23,7 @@ dependencies:
   # Media & Location
   image_picker: ^1.1.2
   geolocator: ^13.0.1
+  image: ^4.2.0
 
   # Maps
   flutter_map: ^7.0.2
@@ -41,3 +42,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/images/

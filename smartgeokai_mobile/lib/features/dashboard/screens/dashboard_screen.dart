@@ -1,17 +1,17 @@
+import '../../assets/widgets/activity_tile.dart';
+
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../assets/models/asset_model.dart';
 import '../../assets/providers/asset_provider.dart';
 import '../../auth/providers/auth_provider.dart';
-import '../../assets/widgets/activity_tile.dart';
 import 'activity_screen.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/time_format.dart';
+import '../../../shared/widgets/app_header.dart';
 
 class DashboardScreen extends StatelessWidget {
-  // Dipanggil untuk pindah tab di navigasi bawah (0 Beranda, 1 Peta,
-  // 2 Data Aset, 3 Profil)
+  // 0 Beranda, 1 Peta, 2 Data Aset, 3 Profil
   final ValueChanged<int> onOpenTab;
 
   const DashboardScreen({super.key, required this.onOpenTab});
@@ -27,15 +27,14 @@ class DashboardScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().user;
     final p    = context.watch<AssetProvider>();
-    final top  = MediaQuery.of(context).padding.top;
 
-    final total     = p.totalCount;
-    final nClear    = p.countByStatus(AssetStatus.clear);
-    final nProses   = p.countByStatus(AssetStatus.proses);
-    final nMasalah  = p.countByStatus(AssetStatus.masalah);
-    final noCoord   = p.withoutLocationCount;
+    final total      = p.totalCount;
+    final nClear     = p.countByStatus(AssetStatus.clear);
+    final nProses    = p.countByStatus(AssetStatus.proses);
+    final nMasalah   = p.countByStatus(AssetStatus.masalah);
+    final noCoord    = p.withoutLocationCount;
     final activities = p.recentActivities(limit: 5);
-    final area      = p.provinceOptions.join(', ');
+    final area       = p.provinceOptions.join(', ');
 
     final name = user?.fullName.trim() ?? '';
     final firstName =
@@ -43,261 +42,233 @@ class DashboardScreen extends StatelessWidget {
 
     final hasAttention = nMasalah > 0 || noCoord > 0;
 
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light,
-      child: RefreshIndicator(
-        onRefresh: () => p.load(),
-        edgeOffset: top,
-        child: ListView(
-          padding: EdgeInsets.zero,
-          physics: const AlwaysScrollableScrollPhysics(),
-          children: [
-            // ── Header ───────────────────────────────────────────────
-            Container(
-              width: double.infinity,
-              padding: EdgeInsets.fromLTRB(24, top + 20, 12, 84),
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [AppColors.primary, AppColors.primaryDark],
-                ),
-                borderRadius:
-                    BorderRadius.vertical(bottom: Radius.circular(36)),
+    return RefreshIndicator(
+      onRefresh: () => p.load(),
+      edgeOffset: MediaQuery.of(context).padding.top,
+      child: ListView(
+        padding: EdgeInsets.zero,
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          // ── Header standar ───────────────────────────────────────
+          AppHeader(
+            title: 'Halo, $firstName',
+            subtitle: formatToday(),
+            bottomPadding: 80,
+            actions: [
+              IconButton(
+                onPressed: p.isLoading ? null : () => p.load(),
+                icon: const Icon(Icons.refresh_rounded, color: Colors.white),
               ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          formatToday(),
-                          style: TextStyle(
-                            fontSize: 12.5,
-                            color: Colors.white.withValues(alpha: 0.8),
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Halo, $firstName',
+            ],
+            child: area.isEmpty
+                ? null
+                : Row(
+                    children: [
+                      Icon(
+                        Icons.place_rounded,
+                        size: 16,
+                        color: Colors.white.withValues(alpha: 0.8),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'Wilayah kerja: $area',
                           maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          area.isEmpty
-                              ? 'Ringkasan pekerjaan Anda'
-                              : 'Wilayah kerja: $area',
-                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 12.5,
                             color: Colors.white.withValues(alpha: 0.85),
                           ),
                         ),
-                      ],
+                      ),
+                    ],
+                  ),
+          ),
+
+          // ── Isi (menimpa bagian bawah header) ────────────────────
+          Transform.translate(
+            offset: const Offset(0, -56),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Total aset + bar proporsi
+                  _Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Text(
+                                'Total Aset',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.gray500,
+                                ),
+                              ),
+                              const Spacer(),
+                              if (p.isLoading)
+                                const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '$total',
+                            style: const TextStyle(
+                              fontSize: 40,
+                              height: 1.1,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          _StackedBar(
+                            clear: nClear,
+                            proses: nProses,
+                            masalah: nMasalah,
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            p.error ?? 'Seluruh aset di wilayah kerja Anda',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: p.error != null
+                                  ? AppColors.error
+                                  : AppColors.gray500,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  IconButton(
-                    onPressed: p.isLoading ? null : () => p.load(),
-                    icon: const Icon(Icons.refresh_rounded, color: Colors.white),
+                  const SizedBox(height: 14),
+
+                  // Kartu per status (ketuk untuk melihat daftarnya)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _StatCard(
+                          label: 'Clear',
+                          count: nClear,
+                          color: AppColors.clear,
+                          icon: Icons.check_circle_rounded,
+                          onTap: () => _openStatus(context, AssetStatus.clear),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _StatCard(
+                          label: 'Proses',
+                          count: nProses,
+                          color: AppColors.proses,
+                          icon: Icons.timelapse_rounded,
+                          onTap: () => _openStatus(context, AssetStatus.proses),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _StatCard(
+                          label: 'Bermasalah',
+                          count: nMasalah,
+                          color: AppColors.masalah,
+                          icon: Icons.error_rounded,
+                          onTap: () => _openStatus(context, AssetStatus.masalah),
+                        ),
+                      ),
+                    ],
                   ),
+
+                  // Perlu perhatian
+                  if (hasAttention) ...[
+                    const SizedBox(height: 24),
+                    const _SectionTitle('Perlu Perhatian'),
+                    const SizedBox(height: 10),
+                    if (nMasalah > 0)
+                      _AttentionTile(
+                        color: AppColors.masalah,
+                        icon: Icons.warning_amber_rounded,
+                        title: '$nMasalah aset bermasalah',
+                        subtitle: 'Perlu segera ditindaklanjuti',
+                        onTap: () => _openStatus(context, AssetStatus.masalah),
+                      ),
+                    if (nMasalah > 0 && noCoord > 0) const SizedBox(height: 10),
+                    if (noCoord > 0)
+                      _AttentionTile(
+                        color: AppColors.accent,
+                        icon: Icons.location_off_rounded,
+                        title: '$noCoord aset belum punya koordinat',
+                        subtitle: 'Lengkapi lokasi agar tampil di peta',
+                        onTap: () {
+                          context.read<AssetProvider>().showOnlyStatus(null);
+                          onOpenTab(_tabAssets);
+                        },
+                      ),
+                  ],
+
+                  // Aktivitas terbaru
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      const Expanded(child: _SectionTitle('Aktivitas Terbaru')),
+                      TextButton(
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const ActivityScreen(),
+                          ),
+                        ),
+                        child: const Text('Lihat semua'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  _Card(
+                    child: activities.isEmpty
+                        ? Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Center(
+                              child: Text(
+                                p.isLoading
+                                    ? 'Memuat aktivitas...'
+                                    : 'Belum ada aktivitas.',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: AppColors.gray500,
+                                ),
+                              ),
+                            ),
+                          )
+                        : Column(
+                            children: [
+                              for (var i = 0; i < activities.length; i++) ...[
+                                if (i > 0)
+                                  const Divider(
+                                    height: 1,
+                                    indent: 70,
+                                    endIndent: 16,
+                                    color: AppColors.gray100,
+                                  ),
+                                ActivityTile(asset: activities[i]),
+                              ],
+                            ],
+                          ),
+                  ),
+                  const SizedBox(height: 8),
                 ],
               ),
             ),
-
-            // ── Isi (menimpa bagian bawah header) ────────────────────
-            Transform.translate(
-              offset: const Offset(0, -56),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Total aset + bar proporsi
-                    _Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                const Text(
-                                  'Total Aset',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.gray500,
-                                  ),
-                                ),
-                                const Spacer(),
-                                if (p.isLoading)
-                                  const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '$total',
-                              style: const TextStyle(
-                                fontSize: 40,
-                                height: 1.1,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.gray900,
-                              ),
-                            ),
-                            const SizedBox(height: 14),
-                            _StackedBar(
-                              clear: nClear,
-                              proses: nProses,
-                              masalah: nMasalah,
-                            ),
-                            const SizedBox(height: 10),
-                            Text(
-                              p.error ?? 'Seluruh aset di wilayah kerja Anda',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: p.error != null
-                                    ? AppColors.error
-                                    : AppColors.gray500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-
-                    // Kartu per status (ketuk untuk melihat daftarnya)
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _StatCard(
-                            label: 'Clear',
-                            count: nClear,
-                            color: AppColors.clear,
-                            icon: Icons.check_circle_rounded,
-                            onTap: () => _openStatus(context, AssetStatus.clear),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _StatCard(
-                            label: 'Proses',
-                            count: nProses,
-                            color: AppColors.proses,
-                            icon: Icons.timelapse_rounded,
-                            onTap: () => _openStatus(context, AssetStatus.proses),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _StatCard(
-                            label: 'Bermasalah',
-                            count: nMasalah,
-                            color: AppColors.masalah,
-                            icon: Icons.error_rounded,
-                            onTap: () => _openStatus(context, AssetStatus.masalah),
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    // Perlu perhatian
-                    if (hasAttention) ...[
-                      const SizedBox(height: 24),
-                      const _SectionTitle('Perlu Perhatian'),
-                      const SizedBox(height: 10),
-                      if (nMasalah > 0)
-                        _AttentionTile(
-                          color: AppColors.masalah,
-                          icon: Icons.warning_amber_rounded,
-                          title: '$nMasalah aset bermasalah',
-                          subtitle: 'Perlu segera ditindaklanjuti',
-                          onTap: () => _openStatus(context, AssetStatus.masalah),
-                        ),
-                      if (nMasalah > 0 && noCoord > 0) const SizedBox(height: 10),
-                      if (noCoord > 0)
-                        _AttentionTile(
-                          color: const Color(0xFF6366F1),
-                          icon: Icons.location_off_rounded,
-                          title: '$noCoord aset belum punya koordinat',
-                          subtitle: 'Lengkapi lokasi agar tampil di peta',
-                          onTap: () {
-                            context.read<AssetProvider>().showOnlyStatus(null);
-                            onOpenTab(_tabAssets);
-                          },
-                        ),
-                    ],
-
-                    // Aktivitas terbaru
-                    const SizedBox(height: 24),
-                    Row(
-                      children: [
-                        const Expanded(child: _SectionTitle('Aktivitas Terbaru')),
-                        TextButton(
-                          onPressed: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const ActivityScreen(),
-                            ),
-                          ),
-                          child: const Text('Lihat semua'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    _Card(
-                      child: activities.isEmpty
-                          ? Padding(
-                              padding: const EdgeInsets.all(24),
-                              child: Center(
-                                child: Text(
-                                  p.isLoading
-                                      ? 'Memuat aktivitas...'
-                                      : 'Belum ada aktivitas.',
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    color: AppColors.gray500,
-                                  ),
-                                ),
-                              ),
-                            )
-                          : Column(
-                              children: [
-                                for (var i = 0; i < activities.length; i++) ...[
-                                  if (i > 0)
-                                    const Divider(
-                                      height: 1,
-                                      indent: 70,
-                                      endIndent: 16,
-                                      color: AppColors.gray100,
-                                    ),
-                                  ActivityTile(asset: activities[i]),
-                                ],
-                              ],
-                            ),
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -344,7 +315,7 @@ class _SectionTitle extends StatelessWidget {
       style: const TextStyle(
         fontSize: 16,
         fontWeight: FontWeight.w700,
-        color: AppColors.gray900,
+        color: AppColors.primary,
       ),
     );
   }

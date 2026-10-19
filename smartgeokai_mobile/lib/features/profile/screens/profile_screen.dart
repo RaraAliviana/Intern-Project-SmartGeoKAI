@@ -1,12 +1,15 @@
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+
 import '../../auth/models/user_model.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../services/profile_service.dart';
 import 'change_password_screen.dart';
 import 'edit_profile_screen.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../shared/widgets/app_header.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -26,12 +29,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _refresh() async {
     final result = await _service.fetchProfile();
+
     if (!mounted) return;
 
     if (result.unauthorized) {
       await _forceLogout();
       return;
     }
+
     if (result.success && result.user != null) {
       await context.read<AuthProvider>().setUser(result.user!);
     }
@@ -39,17 +44,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _forceLogout() async {
     await context.read<AuthProvider>().logout();
+
     if (!mounted) return;
-    Navigator.pushNamedAndRemoveUntil(context, '/login', (_) => false);
+
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      '/login',
+      (_) => false,
+    );
   }
 
   Future<void> _confirmLogout() async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
         title: const Text('Keluar dari akun?'),
-        content: const Text('Kamu perlu login lagi untuk memakai aplikasi.'),
+        content: const Text(
+          'Kamu perlu login lagi untuk memakai aplikasi.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -57,12 +72,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.error,
+            ),
             child: const Text('Keluar'),
           ),
         ],
       ),
     );
+
     if (ok == true) await _forceLogout();
   }
 
@@ -100,7 +118,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               : () => Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (_) => const EditProfileScreen(),
+                                      builder: (_) =>
+                                          const EditProfileScreen(),
                                     ),
                                   ),
                         ),
@@ -113,7 +132,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => const ChangePasswordScreen(),
+                              builder: (_) =>
+                                  const ChangePasswordScreen(),
                             ),
                           ),
                         ),
@@ -135,7 +155,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     const SizedBox(height: 24),
                     const Text(
                       'SmartGeoKAI v2 — PT Kereta Api Indonesia',
-                      style: TextStyle(fontSize: 11, color: AppColors.gray400),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.gray400,
+                      ),
                     ),
                     const SizedBox(height: 8),
                   ],
@@ -149,116 +172,115 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 }
 
-// ── Header gradient + avatar ───────────────────────────────────────────
+// ── Header profil menggunakan AppHeader ──────────────────────────────
+
 class _Header extends StatelessWidget {
   final UserModel? user;
+
   const _Header({required this.user});
 
   String get _initials {
     final name = user?.fullName.trim() ?? '';
+
     if (name.isEmpty) return '?';
+
     final parts = name.split(RegExp(r'\s+'));
     final first = parts.first[0];
     final second = parts.length > 1 ? parts[1][0] : '';
+
     return (first + second).toUpperCase();
   }
 
   @override
   Widget build(BuildContext context) {
-    final top = MediaQuery.of(context).padding.top;
-
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.fromLTRB(24, top + 16, 24, 72),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [AppColors.primary, AppColors.primaryDark],
-        ),
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(36)),
-      ),
-      child: Column(
-        children: [
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'Profil Saya',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
+    return AppHeader(
+      title: 'Profil Saya',
+      bottomPadding: 72,
+      child: SizedBox(
+        width: double.infinity,
+        child: Column(
+          children: [
+            // Cincin oranye di sekeliling avatar.
+            Container(
+              padding: const EdgeInsets.all(3),
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.accent,
               ),
-            ),
-          ),
-          const SizedBox(height: 24),
-          Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white.withValues(alpha: 0.25),
-            ),
-            child: CircleAvatar(
-              radius: 44,
-              backgroundColor: Colors.white,
-              child: Text(
-                _initials,
-                style: const TextStyle(
-                  fontSize: 30,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.primary,
+              child: CircleAvatar(
+                radius: 42,
+                backgroundColor: Colors.white,
+                child: Text(
+                  _initials,
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
+                  ),
                 ),
               ),
             ),
-          ),
-          const SizedBox(height: 14),
-          Text(
-            user?.fullName ?? '-',
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              (user?.role ?? '-').toUpperCase(),
+            const SizedBox(height: 14),
+            Text(
+              user?.fullName ?? '-',
+              textAlign: TextAlign.center,
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 1,
+                fontSize: 19,
+                fontWeight: FontWeight.w700,
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 5,
+              ),
+              decoration: BoxDecoration(
+                color: AppColors.accent,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                (user?.role ?? '-').toUpperCase(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-// ── Kartu informasi ────────────────────────────────────────────────────
+// ── Kartu informasi ──────────────────────────────────────────────────
+
 class _InfoCard extends StatelessWidget {
   final UserModel? user;
+
   const _InfoCard({required this.user});
 
   @override
   Widget build(BuildContext context) {
-    final username = (user?.username.isNotEmpty ?? false) ? user!.username : '-';
-    final nip      = (user?.nip.isNotEmpty ?? false) ? user!.nip : '-';
-    final active   = user?.isActive ?? true;
+    final username =
+        (user?.username.isNotEmpty ?? false) ? user!.username : '-';
+
+    final nip = (user?.nip.isNotEmpty ?? false) ? user!.nip : '-';
+
+    final active = user?.isActive ?? true;
 
     return _CardShell(
       child: Column(
         children: [
-          _InfoRow(icon: Icons.badge_rounded, label: 'NIP', value: nip),
+          _InfoRow(
+            icon: Icons.badge_rounded,
+            label: 'NIP',
+            value: nip,
+          ),
           const _TileDivider(),
           _InfoRow(
             icon: Icons.alternate_email_rounded,
@@ -280,9 +302,9 @@ class _InfoCard extends StatelessWidget {
 
 class _InfoRow extends StatelessWidget {
   final IconData icon;
-  final String   label;
-  final String   value;
-  final Color?   valueColor;
+  final String label;
+  final String value;
+  final Color? valueColor;
 
   const _InfoRow({
     required this.icon,
@@ -294,7 +316,10 @@ class _InfoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 18,
+        vertical: 14,
+      ),
       child: Row(
         children: [
           Container(
@@ -304,7 +329,11 @@ class _InfoRow extends StatelessWidget {
               color: AppColors.primaryLight,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, size: 19, color: AppColors.primary),
+            child: Icon(
+              icon,
+              size: 19,
+              color: AppColors.primary,
+            ),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -336,23 +365,27 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
-// ── Menu ───────────────────────────────────────────────────────────────
+// ── Menu ─────────────────────────────────────────────────────────────
+
 class _MenuCard extends StatelessWidget {
   final List<Widget> children;
+
   const _MenuCard({required this.children});
 
   @override
   Widget build(BuildContext context) {
-    return _CardShell(child: Column(children: children));
+    return _CardShell(
+      child: Column(children: children),
+    );
   }
 }
 
 class _MenuTile extends StatelessWidget {
   final IconData icon;
-  final Color    color;
-  final String   title;
-  final String   subtitle;
-  final Color?   titleColor;
+  final Color color;
+  final String title;
+  final String subtitle;
+  final Color? titleColor;
   final VoidCallback? onTap;
 
   const _MenuTile({
@@ -370,7 +403,10 @@ class _MenuTile extends StatelessWidget {
       borderRadius: BorderRadius.circular(20),
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 18,
+          vertical: 14,
+        ),
         child: Row(
           children: [
             Container(
@@ -380,7 +416,11 @@ class _MenuTile extends StatelessWidget {
                 color: color.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(13),
               ),
-              child: Icon(icon, size: 21, color: color),
+              child: Icon(
+                icon,
+                size: 21,
+                color: color,
+              ),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -406,13 +446,18 @@ class _MenuTile extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right_rounded, color: AppColors.gray400),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: AppColors.gray400,
+            ),
           ],
         ),
       ),
     );
   }
 }
+
+// ── Pembatas ─────────────────────────────────────────────────────────
 
 class _TileDivider extends StatelessWidget {
   const _TileDivider();
@@ -429,8 +474,11 @@ class _TileDivider extends StatelessWidget {
   }
 }
 
+// ── Container kartu ──────────────────────────────────────────────────
+
 class _CardShell extends StatelessWidget {
   final Widget child;
+
   const _CardShell({required this.child});
 
   @override

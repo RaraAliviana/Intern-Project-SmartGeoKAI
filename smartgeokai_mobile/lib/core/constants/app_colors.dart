@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  // Brand — sesuaikan dengan warna web admin
-  static const Color primary     = Color(0xFF465FFF);
-  static const Color primaryDark = Color(0xFF3B4FCC);
-  static const Color primaryLight = Color(0xFFEEF0FF);
+  // Brand KAI: biru navy + oranye
+  static const Color primary      = Color(0xFF2D2A70);
+  static const Color primaryDark  = Color(0xFF1F1D52);
+  static const Color primaryLight = Color(0xFFEDEDF8);
+
+  static const Color accent       = Color(0xFFEF6C2B);
+  static const Color accentDark   = Color(0xFFD65A1B);
+  static const Color accentLight  = Color(0xFFFEEFE6);
 
   // Status aset
   static const Color clear   = Color(0xFF22C55E);
@@ -22,7 +26,7 @@ class AppColors {
   static const Color gray900 = Color(0xFF111827);
 
   // Background
-  static const Color background = Color(0xFFF9FAFB);
+  static const Color background = Color(0xFFF6F7FB);
   static const Color white      = Color(0xFFFFFFFF);
 
   // Error

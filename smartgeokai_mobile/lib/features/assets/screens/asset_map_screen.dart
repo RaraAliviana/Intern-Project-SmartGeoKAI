@@ -8,6 +8,7 @@ import '../providers/asset_provider.dart';
 import '../widgets/asset_summary_sheet.dart';
 import '../widgets/asset_toolbar.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../shared/widgets/app_header.dart';
 
 class AssetMapScreen extends StatefulWidget {
   const AssetMapScreen({super.key});
@@ -45,7 +46,7 @@ class _AssetMapScreenState extends State<AssetMapScreen> {
     _mapController.fitCamera(
       CameraFit.bounds(
         bounds: LatLngBounds.fromPoints(points),
-        padding: const EdgeInsets.fromLTRB(48, 180, 48, 120),
+        padding: const EdgeInsets.fromLTRB(48, 260, 48, 120),
         maxZoom: 17,
       ),
     );
@@ -54,9 +55,7 @@ class _AssetMapScreenState extends State<AssetMapScreen> {
   // ── Lokasi saya ────────────────────────────────────────────────────
   void _toast(String text) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(text), behavior: SnackBarBehavior.floating),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
 
   Future<void> _goToMyLocation() async {
@@ -107,7 +106,7 @@ class _AssetMapScreenState extends State<AssetMapScreen> {
       point: a.point!,
       width: 46,
       height: 46,
-      alignment: Alignment.topCenter, // ujung bawah pin tepat di koordinat
+      alignment: Alignment.topCenter,
       child: GestureDetector(
         onTap: () => showAssetSummary(context, a),
         child: Stack(
@@ -130,52 +129,56 @@ class _AssetMapScreenState extends State<AssetMapScreen> {
 
     return Stack(
       children: [
-        FlutterMap(
-          mapController: _mapController,
-          options: MapOptions(
-            initialCenter: const LatLng(-2.5, 118), // Indonesia
-            initialZoom: 4.5,
-            minZoom: 3,
-            maxZoom: 19,
-            onMapReady: () {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted && !_mapReady) setState(() => _mapReady = true);
-              });
-            },
-          ),
-          children: [
-            TileLayer(
-              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-              userAgentPackageName: 'com.smartgeokai.mobile',
+        // Peta penuh layar
+        Positioned.fill(
+          child: FlutterMap(
+            mapController: _mapController,
+            options: MapOptions(
+              initialCenter: const LatLng(-2.5, 118),
+              initialZoom: 4.5,
+              minZoom: 3,
+              maxZoom: 19,
+              onMapReady: () {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted && !_mapReady) setState(() => _mapReady = true);
+                });
+              },
             ),
-            MarkerLayer(markers: assets.map(_buildMarker).toList()),
-            if (_myPosition != null)
-              MarkerLayer(
-                markers: [
-                  Marker(
-                    point: _myPosition!,
-                    width: 30,
-                    height: 30,
-                    child: const _MyLocationDot(),
-                  ),
+            children: [
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.smartgeokai.mobile',
+              ),
+              MarkerLayer(markers: assets.map(_buildMarker).toList()),
+              if (_myPosition != null)
+                MarkerLayer(
+                  markers: [
+                    Marker(
+                      point: _myPosition!,
+                      width: 30,
+                      height: 30,
+                      child: const _MyLocationDot(),
+                    ),
+                  ],
+                ),
+              const RichAttributionWidget(
+                alignment: AttributionAlignment.bottomLeft,
+                attributions: [
+                  TextSourceAttribution('© OpenStreetMap contributors'),
                 ],
               ),
-            const RichAttributionWidget(
-              alignment: AttributionAlignment.bottomLeft,
-              attributions: [
-                TextSourceAttribution('© OpenStreetMap contributors'),
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
 
-        // Pencarian + chip status
-        SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
+        // Header standar (di atas peta)
+        Align(
+          alignment: Alignment.topCenter,
+          child: AppHeader(
+            title: 'Peta Sebaran Aset',
+            subtitle: '${assets.length} aset ditampilkan',
+            child: const Column(
+              children: [
                 AssetSearchBar(),
                 SizedBox(height: 10),
                 AssetStatusFilterRow(),
@@ -194,7 +197,7 @@ class _AssetMapScreenState extends State<AssetMapScreen> {
               FloatingActionButton.small(
                 heroTag: null,
                 backgroundColor: AppColors.white,
-                foregroundColor: AppColors.gray700,
+                foregroundColor: AppColors.primary,
                 onPressed: p.isLoading ? null : () => p.load(),
                 child: const Icon(Icons.refresh_rounded),
               ),
@@ -202,14 +205,14 @@ class _AssetMapScreenState extends State<AssetMapScreen> {
               FloatingActionButton.small(
                 heroTag: null,
                 backgroundColor: AppColors.white,
-                foregroundColor: AppColors.gray700,
+                foregroundColor: AppColors.primary,
                 onPressed: assets.isEmpty ? null : () => _fitAll(assets),
                 child: const Icon(Icons.zoom_out_map_rounded),
               ),
               const SizedBox(height: 10),
               FloatingActionButton(
                 heroTag: null,
-                backgroundColor: AppColors.primary,
+                backgroundColor: AppColors.accent,
                 foregroundColor: Colors.white,
                 onPressed: _goToMyLocation,
                 child: _locating
@@ -320,9 +323,7 @@ class _MyLocationDot extends StatelessWidget {
             color: blue,
             shape: BoxShape.circle,
             border: Border.all(color: Colors.white, width: 3),
-            boxShadow: const [
-              BoxShadow(color: Colors.black26, blurRadius: 4),
-            ],
+            boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
           ),
         ),
       ),

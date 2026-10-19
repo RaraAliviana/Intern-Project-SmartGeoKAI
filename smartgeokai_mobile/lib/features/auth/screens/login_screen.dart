@@ -1,5 +1,7 @@
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../providers/auth_provider.dart';
 import '../../../core/constants/app_colors.dart';
 
@@ -11,11 +13,11 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _usernameCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
 
-  final _formKey         = GlobalKey<FormState>();
-  final _usernameCtrl    = TextEditingController();
-  final _passwordCtrl    = TextEditingController();
-  bool  _passwordVisible = false;
+  bool _passwordVisible = false;
 
   @override
   void dispose() {
@@ -28,9 +30,9 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     final success = await context.read<AuthProvider>().login(
-      username: _usernameCtrl.text.trim(),
-      password: _passwordCtrl.text,
-    );
+          username: _usernameCtrl.text.trim(),
+          password: _passwordCtrl.text,
+        );
 
     if (!mounted) return;
 
@@ -47,34 +49,34 @@ class _LoginScreenState extends State<LoginScreen> {
         child: SingleChildScrollView(
           child: Column(
             children: [
-
-              // ── Header biru ────────────────────────────────────────
+              // ── Header biru ──────────────────────────────────
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.fromLTRB(24, 48, 24, 40),
                 decoration: const BoxDecoration(
                   color: AppColors.primary,
                   borderRadius: BorderRadius.only(
-                    bottomLeft:  Radius.circular(32),
+                    bottomLeft: Radius.circular(32),
                     bottomRight: Radius.circular(32),
                   ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-
-                    // Logo
+                    // Logo KAI di dalam kartu putih
                     Container(
-                      width: 56,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(16),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
                       ),
-                      child: const Icon(
-                        Icons.map_rounded,
+                      decoration: BoxDecoration(
                         color: Colors.white,
-                        size: 30,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Image.asset(
+                        'assets/images/logo_kai.png',
+                        width: 72,
+                        fit: BoxFit.contain,
                       ),
                     ),
 
@@ -99,11 +101,22 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
 
+                    // ── Aksen oranye ──────────────────────────
+                    const SizedBox(height: 14),
+
+                    Container(
+                      width: 28,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: AppColors.accent,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
                   ],
                 ),
               ),
 
-              // ── Form ───────────────────────────────────────────────
+              // ── Form login ───────────────────────────────────
               Padding(
                 padding: const EdgeInsets.all(24),
                 child: Form(
@@ -111,16 +124,16 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-
                       const SizedBox(height: 8),
 
-                      // Error message dari provider
+                      // Pesan error dari AuthProvider
                       Consumer<AuthProvider>(
                         builder: (_, auth, __) {
                           if (auth.status != AuthStatus.error ||
                               auth.errorMessage == null) {
                             return const SizedBox.shrink();
                           }
+
                           return Container(
                             width: double.infinity,
                             margin: const EdgeInsets.only(bottom: 16),
@@ -128,12 +141,17 @@ class _LoginScreenState extends State<LoginScreen> {
                             decoration: BoxDecoration(
                               color: AppColors.errorLight,
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: AppColors.error.withOpacity(0.3)),
+                              border: Border.all(
+                                color: AppColors.error.withOpacity(0.3),
+                              ),
                             ),
                             child: Row(
                               children: [
-                                const Icon(Icons.error_outline,
-                                    color: AppColors.error, size: 18),
+                                const Icon(
+                                  Icons.error_outline,
+                                  color: AppColors.error,
+                                  size: 18,
+                                ),
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: Text(
@@ -153,6 +171,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       // Username
                       _buildLabel('Username'),
                       const SizedBox(height: 8),
+
                       TextFormField(
                         controller: _usernameCtrl,
                         keyboardType: TextInputType.text,
@@ -174,9 +193,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       // Password
                       _buildLabel('Password'),
                       const SizedBox(height: 8),
+
                       TextFormField(
-                        controller:    _passwordCtrl,
-                        obscureText:   !_passwordVisible,
+                        controller: _passwordCtrl,
+                        obscureText: !_passwordVisible,
                         textInputAction: TextInputAction.done,
                         onFieldSubmitted: (_) => _handleLogin(),
                         decoration: _inputDecoration(
@@ -191,9 +211,11 @@ class _LoginScreenState extends State<LoginScreen> {
                               color: AppColors.gray400,
                               size: 20,
                             ),
-                            onPressed: () => setState(() {
-                              _passwordVisible = !_passwordVisible;
-                            }),
+                            onPressed: () {
+                              setState(() {
+                                _passwordVisible = !_passwordVisible;
+                              });
+                            },
                           ),
                         ),
                         validator: (v) {
@@ -209,42 +231,47 @@ class _LoginScreenState extends State<LoginScreen> {
 
                       const SizedBox(height: 32),
 
-                      // Tombol Login
+                      // Tombol login
                       Consumer<AuthProvider>(
-                        builder: (_, auth, __) => SizedBox(
-                          width: double.infinity,
-                          height: 52,
-                          child: ElevatedButton(
-                            onPressed: auth.isLoading ? null : _handleLogin,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: Colors.white,
-                              disabledBackgroundColor:
-                                  AppColors.primary.withOpacity(0.6),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
+                        builder: (_, auth, __) {
+                          return SizedBox(
+                            width: double.infinity,
+                            height: 52,
+                            child: ElevatedButton(
+                              onPressed:
+                                  auth.isLoading ? null : _handleLogin,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: Colors.white,
+                                disabledBackgroundColor:
+                                    AppColors.primary.withOpacity(0.6),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                elevation: 0,
                               ),
-                              elevation: 0,
+                              child: auth.isLoading
+                                  ? const SizedBox(
+                                      width: 22,
+                                      height: 22,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.5,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                          Colors.white,
+                                        ),
+                                      ),
+                                    )
+                                  : const Text(
+                                      'Masuk',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
                             ),
-                            child: auth.isLoading
-                                ? const SizedBox(
-                                    width: 22,
-                                    height: 22,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2.5,
-                                      valueColor: AlwaysStoppedAnimation(
-                                          Colors.white),
-                                    ),
-                                  )
-                                : const Text(
-                                    'Masuk',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                          ),
-                        ),
+                          );
+                        },
                       ),
 
                       const SizedBox(height: 24),
@@ -259,18 +286,18 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                       ),
-
                     ],
                   ),
                 ),
               ),
-
             ],
           ),
         ),
       ),
     );
   }
+
+  // ── Label form ──────────────────────────────────────────────
 
   Widget _buildLabel(String text) {
     return Text(
@@ -283,40 +310,60 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  // ── Dekorasi input ─────────────────────────────────────────
+
   InputDecoration _inputDecoration({
     required String hint,
     required IconData icon,
   }) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: TextStyle(
+      hintStyle: const TextStyle(
         color: AppColors.gray400,
         fontSize: 14,
       ),
-      prefixIcon: Icon(icon, color: AppColors.gray400, size: 20),
+      prefixIcon: Icon(
+        icon,
+        color: AppColors.gray400,
+        size: 20,
+      ),
       filled: true,
       fillColor: AppColors.white,
       contentPadding: const EdgeInsets.symmetric(
-        horizontal: 16, vertical: 16),
+        horizontal: 16,
+        vertical: 16,
+      ),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.gray200),
+        borderSide: const BorderSide(
+          color: AppColors.gray200,
+        ),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.gray200),
+        borderSide: const BorderSide(
+          color: AppColors.gray200,
+        ),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+        borderSide: const BorderSide(
+          color: AppColors.primary,
+          width: 1.5,
+        ),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.error),
+        borderSide: const BorderSide(
+          color: AppColors.error,
+        ),
       ),
       focusedErrorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.error, width: 1.5),
+        borderSide: const BorderSide(
+          color: AppColors.error,
+          width: 1.5,
+        ),
       ),
     );
   }

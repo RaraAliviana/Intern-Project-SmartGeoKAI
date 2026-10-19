@@ -1,14 +1,15 @@
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/constants/app_colors.dart';
 
 class AppTextField extends StatefulWidget {
   final TextEditingController controller;
-  final String   label;
-  final String   hint;
+  final String label;
+  final String hint;
   final IconData icon;
-  final bool     isPassword;
-  final TextInputType?   keyboardType;
+  final bool isPassword;
+  final TextInputType? keyboardType;
   final TextInputAction? textInputAction;
   final String? Function(String?)? validator;
   final String? errorText;
@@ -16,6 +17,7 @@ class AppTextField extends StatefulWidget {
   final ValueChanged<String>? onSubmitted;
   final List<TextInputFormatter>? inputFormatters;
   final int? maxLength;
+  final int maxLines;
 
   const AppTextField({
     super.key,
@@ -32,6 +34,7 @@ class AppTextField extends StatefulWidget {
     this.onSubmitted,
     this.inputFormatters,
     this.maxLength,
+    this.maxLines = 1,
   });
 
   @override
@@ -69,16 +72,27 @@ class _AppTextFieldState extends State<AppTextField> {
           textInputAction: widget.textInputAction,
           inputFormatters: widget.inputFormatters,
           maxLength: widget.maxLength,
+          maxLines: widget.isPassword ? 1 : widget.maxLines,
           onChanged: widget.onChanged,
           onFieldSubmitted: widget.onSubmitted,
           validator: widget.validator,
-          style: const TextStyle(fontSize: 14, color: AppColors.gray900),
+          style: const TextStyle(
+            fontSize: 14,
+            color: AppColors.gray900,
+          ),
           decoration: InputDecoration(
             hintText: widget.hint,
-            hintStyle: const TextStyle(color: AppColors.gray400, fontSize: 14),
+            hintStyle: const TextStyle(
+              color: AppColors.gray400,
+              fontSize: 14,
+            ),
             counterText: '',
             errorText: widget.errorText,
-            prefixIcon: Icon(widget.icon, color: AppColors.gray400, size: 20),
+            prefixIcon: Icon(
+              widget.icon,
+              color: AppColors.gray400,
+              size: 20,
+            ),
             suffixIcon: widget.isPassword
                 ? IconButton(
                     icon: Icon(
@@ -88,13 +102,17 @@ class _AppTextFieldState extends State<AppTextField> {
                       color: AppColors.gray400,
                       size: 20,
                     ),
-                    onPressed: () => setState(() => _obscure = !_obscure),
+                    onPressed: () {
+                      setState(() => _obscure = !_obscure);
+                    },
                   )
                 : null,
             filled: true,
             fillColor: AppColors.white,
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 16,
+            ),
             border: _border(AppColors.gray200),
             enabledBorder: _border(AppColors.gray200),
             focusedBorder: _border(AppColors.primary, 1.5),

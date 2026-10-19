@@ -75,18 +75,27 @@ class _SplashScreenState extends State<SplashScreen>
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
 
-                // Logo / Icon
+                // Logo KAI di dalam kartu putih
                 Container(
-                  width: 100,
-                  height: 100,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(28),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 26,
+                    vertical: 20,
                   ),
-                  child: const Icon(
-                    Icons.map_rounded,
-                    size: 52,
+                  decoration: BoxDecoration(
                     color: Colors.white,
+                    borderRadius: BorderRadius.circular(28),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.2),
+                        blurRadius: 24,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: Image.asset(
+                    'assets/images/logo_kai.png',
+                    width: 130,
+                    fit: BoxFit.contain,
                   ),
                 ),
 
