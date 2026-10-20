@@ -6,6 +6,7 @@ import 'package:smartgeokai_mobile/core/constants/app_colors.dart';
 import 'package:smartgeokai_mobile/features/assets/models/asset_model.dart';
 import 'package:smartgeokai_mobile/features/assets/providers/asset_provider.dart';
 import 'package:smartgeokai_mobile/features/assets/screens/asset_form_screen.dart';
+import 'package:smartgeokai_mobile/features/assets/widgets/asset_status_chip.dart';
 import 'package:smartgeokai_mobile/features/assets/widgets/asset_summary_sheet.dart';
 import 'package:smartgeokai_mobile/features/assets/widgets/asset_toolbar.dart';
 import 'package:smartgeokai_mobile/shared/widgets/app_header.dart';
@@ -20,41 +21,26 @@ class AssetListScreen extends StatelessWidget {
         final items = p.filtered;
 
         return Scaffold(
+          floatingActionButton: FloatingActionButton.extended(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const AssetFormScreen(),
+                ),
+              );
+            },
+            backgroundColor: AppColors.accent,
+            foregroundColor: Colors.white,
+            icon: const Icon(Icons.add_rounded),
+            label: const Text('Tambah Aset'),
+          ),
           body: SafeArea(
             child: Column(
               children: [
                 AppHeader(
                   title: 'Data Aset',
                   subtitle: '${items.length} dari ${p.totalCount} aset',
-                  actions: [
-                    Padding(
-                      padding: const EdgeInsets.only(right: 16),
-                      child: Material(
-                        color: AppColors.accent,
-                        borderRadius: BorderRadius.circular(12),
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(12),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const AssetFormScreen(),
-                              ),
-                            );
-                          },
-                          child: const SizedBox(
-                            width: 44,
-                            height: 44,
-                            child: Icon(
-                              Icons.add,
-                              color: Colors.white,
-                              size: 26,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
                   child: Column(
                     children: const [
                       AssetSearchBar(),
@@ -63,7 +49,6 @@ class AssetListScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-
                 Expanded(
                   child: _buildContent(context, p, items),
                 ),
@@ -146,7 +131,7 @@ class AssetListScreen extends StatelessWidget {
     return RefreshIndicator(
       onRefresh: () => p.load(),
       child: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 88),
         itemCount: items.length,
         separatorBuilder: (_, __) => const SizedBox(height: 10),
         itemBuilder: (context, index) {
@@ -204,7 +189,6 @@ class _AssetTile extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -242,11 +226,12 @@ class _AssetTile extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 10),
-                    _StatusBadge(status: asset.status),
+                    AssetStatusChip(
+                      status: asset.status,
+                    ),
                   ],
                 ),
               ),
-
               const SizedBox(width: 8),
               const Icon(
                 Icons.chevron_right,
@@ -254,44 +239,6 @@ class _AssetTile extends StatelessWidget {
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _StatusBadge extends StatelessWidget {
-  final String status;
-
-  const _StatusBadge({
-    required this.status,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final normalized = status.toLowerCase();
-
-    final isActive = normalized == 'aktif';
-    final background = isActive
-        ? Colors.green.withValues(alpha: 0.12)
-        : Colors.orange.withValues(alpha: 0.12);
-    final foreground = isActive ? Colors.green.shade700 : Colors.orange.shade800;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 10,
-        vertical: 5,
-      ),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        status,
-        style: TextStyle(
-          color: foreground,
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
         ),
       ),
     );

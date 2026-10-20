@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
-import '../../../core/config/app_config.dart';
-import '../../../core/constants/app_colors.dart';
+import 'package:smartgeokai_mobile/core/config/app_config.dart';
+import 'package:smartgeokai_mobile/core/constants/app_colors.dart';
 
 enum AssetStatus {
-  clear('Clear', AppColors.clear),
-  proses('Proses', AppColors.proses),
-  masalah('Masalah', AppColors.masalah);
+  // Argumen ke-3 = nilai yang DIKIRIM ke backend.
+  // SESUAIKAN dengan nilai status di web (mis. 'bermasalah' kalau begitu).
+  clear('Clear', AppColors.clear, 'Clear'),
+  proses('Proses', AppColors.proses, 'Proses'),
+  masalah('Masalah', AppColors.masalah, 'Masalah');
 
   final String label;
   final Color  color;
-  const AssetStatus(this.label, this.color);
+  final String apiValue;
+  const AssetStatus(this.label, this.color, this.apiValue);
 
   static AssetStatus parse(dynamic raw) {
     final s = (raw ?? '').toString().toLowerCase();
@@ -22,6 +25,7 @@ enum AssetStatus {
   }
 }
 
+/// Satu baris tabel asset_images.
 class AssetPhoto {
   final String? id;
   final String  url;
@@ -31,31 +35,44 @@ class AssetPhoto {
   static AssetPhoto? from(dynamic raw) {
     String? id;
     var url = '';
+
     if (raw is String) {
-      url = raw;
+      url = _absolute(raw);
     } else if (raw is Map) {
-      id  = raw['id']?.toString();
-      url = (raw['url'] ?? raw['photo_url'] ?? raw['path'] ?? raw['file'] ?? '')
+      id = raw['id']?.toString();
+      final direct = (raw['url'] ?? raw['photo_url'] ?? raw['image_url'] ?? '')
           .toString();
+      final path = (raw['file_path'] ?? raw['path'] ?? '').toString();
+      if (direct.isNotEmpty) {
+        url = _absolute(direct);
+      } else if (path.isNotEmpty) {
+        url = _absolute(path, storage: true);
+      }
     }
-    if (url.isEmpty) return null;
-    return AssetPhoto(id: id, url: _absolute(url));
+    return url.isEmpty ? null : AssetPhoto(id: id, url: url);
   }
 
-  // Jadikan URL absolut kalau backend hanya mengirim path relatif
-  static String _absolute(String url) {
-    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  // file_path biasanya relatif terhadap disk "public" → /storage/<file_path>
+  static String _absolute(String value, {bool storage = false}) {
+    if (value.startsWith('http://') || value.startsWith('https://')) {
+      return value;
+    }
     final origin = AppConfig.baseUrl.replaceFirst(RegExp(r'/api/?$'), '');
-    return url.startsWith('/') ? '$origin$url' : '$origin/$url';
+    var p = value.startsWith('/') ? value.substring(1) : value;
+    if (storage && !p.startsWith('storage/')) p = 'storage/$p';
+    return '$origin/$p';
   }
 }
 
 class AssetModel {
   final String id;
-  final String code;
-  final String name;
-  final String type;
-  final String address;
+  final String code;            // id_asset
+  final String type;            // asset_type
+  final String classification;
+  final String assetGroup;
+  final double? areaM2;
+  final String gmapsUrl;
+  final String description;
   final String province;
   final String regency;
   final String district;
@@ -72,9 +89,12 @@ class AssetModel {
   const AssetModel({
     required this.id,
     required this.code,
-    required this.name,
     required this.type,
-    required this.address,
+    required this.classification,
+    required this.assetGroup,
+    required this.areaM2,
+    required this.gmapsUrl,
+    required this.description,
     required this.province,
     required this.regency,
     required this.district,
@@ -89,11 +109,15 @@ class AssetModel {
     required this.photos,
   });
 
+  // Kompatibilitas dengan halaman lama (aset tidak punya "nama" sendiri)
+  String get name    => code;
+  String get address => description;
+
   bool get hasLocation => latitude != null && longitude != null;
 
   LatLng? get point => hasLocation ? LatLng(latitude!, longitude!) : null;
 
-  String get displayName => name.isNotEmpty ? name : (code.isNotEmpty ? code : '-');
+  String get displayName => code.isNotEmpty ? code : (type.isNotEmpty ? type : '-');
 
   String get displayCode => code.isNotEmpty ? code : id;
 
@@ -108,17 +132,16 @@ class AssetModel {
       (updatedAt == null ||
           updatedAt!.difference(createdAt!).inSeconds.abs() < 5);
 
-  // ── Parsing: SESUAIKAN DI SINI kalau nama field backend berbeda ──────
   factory AssetModel.fromJson(Map<String, dynamic> json) {
     final lat = _num(json['latitude'] ?? json['lat']);
-    final lng = _num(json['longitude'] ?? json['lng'] ?? json['long'] ?? json['lon']);
+    final lng = _num(json['longitude'] ?? json['lng'] ?? json['long']);
     final valid = lat != null &&
         lng != null &&
         lat >= -90 && lat <= 90 &&
         lng >= -180 && lng <= 180 &&
         !(lat == 0 && lng == 0);
 
-    final rawPhotos = json['photos'] ?? json['images'] ?? json['foto'];
+    final rawPhotos = json['images'] ?? json['asset_images'] ?? json['photos'];
     final photos = <AssetPhoto>[];
     if (rawPhotos is List) {
       for (final p in rawPhotos) {
@@ -128,22 +151,25 @@ class AssetModel {
     }
 
     return AssetModel(
-      id:       _first(json, ['id']),
-      code:     _first(json, ['code', 'asset_code', 'kode', 'kode_aset']),
-      name:     _first(json, ['name', 'nama', 'asset_name', 'nama_aset']),
-      type:     _first(json, ['type', 'asset_type', 'jenis', 'jenis_aset', 'category']),
-      address:  _first(json, ['address', 'alamat']),
-      province: _first(json, ['province', 'province_name', 'provinsi']),
-      regency:  _first(json, ['regency', 'regency_name', 'kabupaten', 'city']),
-      district: _first(json, ['district', 'district_name', 'kecamatan']),
+      id:             _first(json, ['id']),
+      code:           _first(json, ['id_asset', 'code', 'asset_code', 'kode']),
+      type:           _first(json, ['asset_type', 'type', 'jenis']),
+      classification: _first(json, ['classification', 'klasifikasi']),
+      assetGroup:     _first(json, ['asset_group', 'group']),
+      areaM2:         _num(json['area_m2'] ?? json['area']),
+      gmapsUrl:       _first(json, ['gmaps_url']),
+      description:    _first(json, ['description', 'deskripsi']),
+      province:   _first(json, ['province', 'province_name', 'provinsi']),
+      regency:    _first(json, ['regency', 'regency_name', 'kabupaten', 'city']),
+      district:   _first(json, ['district', 'district_name', 'kecamatan']),
       provinceId: _id(json, 'province_id', 'province'),
       regencyId:  _id(json, 'regency_id', 'regency'),
       districtId: _id(json, 'district_id', 'district'),
-      status:   AssetStatus.parse(json['status']),
-      latitude:  valid ? lat : null,
-      longitude: valid ? lng : null,
-      createdAt: _date(json['created_at'] ?? json['createdAt']),
-      updatedAt: _date(json['updated_at'] ?? json['updatedAt']),
+      status:     AssetStatus.parse(json['status']),
+      latitude:   valid ? lat : null,
+      longitude:  valid ? lng : null,
+      createdAt:  _date(json['created_at'] ?? json['createdAt']),
+      updatedAt:  _date(json['updated_at'] ?? json['updatedAt']),
       photos: photos,
     );
   }
@@ -162,7 +188,6 @@ class AssetModel {
     return '';
   }
 
-  // ID wilayah: dari `province_id`, atau dari objek `province: {id: ..}`
   static String _id(Map<String, dynamic> json, String key, String nested) {
     final direct = json[key];
     if (direct != null) return direct.toString();

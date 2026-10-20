@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import 'package:smartgeokai_mobile/core/constants/app_colors.dart';
-import 'package:smartgeokai_mobile/core/utils/location_helper.dart';
 import 'package:smartgeokai_mobile/features/assets/models/asset_model.dart';
 import 'package:smartgeokai_mobile/features/assets/providers/asset_provider.dart';
+import 'package:smartgeokai_mobile/features/assets/screens/location_picker_screen.dart';
 import 'package:smartgeokai_mobile/features/assets/services/asset_write_service.dart';
 import 'package:smartgeokai_mobile/features/assets/services/region_service.dart';
 import 'package:smartgeokai_mobile/features/assets/widgets/asset_photo_picker.dart';
@@ -22,20 +23,28 @@ class AssetFormScreen extends StatefulWidget {
 
 class _AssetFormScreenState extends State<AssetFormScreen> {
   static const _knownKeys = {
-    'name', 'code', 'type', 'status', 'address',
-    'province_id', 'regency_id', 'district_id', 'latitude', 'longitude',
+    'id_asset', 'asset_type', 'classification', 'asset_group',
+    'province_id', 'regency_id', 'district_id', 'area_m2',
+    'latitude', 'longitude', 'gmaps_url', 'status', 'description',
   };
 
-  final _formKey     = GlobalKey<FormState>();
-  final _regions     = RegionService();
-  final _writer      = AssetWriteService();
+  static const _typeOptions = ['Tanah', 'Bangunan'];
+  static const _classOptions = ['ROW', 'Fasilitas', 'Operasional'];
+  static const _groupOptions = ['Produksi', 'Non Produksi'];
 
-  final _nameCtrl    = TextEditingController();
-  final _codeCtrl    = TextEditingController();
-  final _typeCtrl    = TextEditingController();
-  final _addressCtrl = TextEditingController();
-  final _latCtrl     = TextEditingController();
-  final _lngCtrl     = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  final _regions = RegionService();
+  final _writer  = AssetWriteService();
+
+  final _idCtrl    = TextEditingController();
+  final _typeCtrl  = TextEditingController();
+  final _classCtrl = TextEditingController();
+  final _groupCtrl = TextEditingController();
+  final _areaCtrl  = TextEditingController();
+  final _latCtrl   = TextEditingController();
+  final _lngCtrl   = TextEditingController();
+  final _gmapsCtrl = TextEditingController();
+  final _descCtrl  = TextEditingController();
   late final PhotoController _photos;
 
   AssetStatus _status = AssetStatus.clear;
@@ -51,10 +60,7 @@ class _AssetFormScreenState extends State<AssetFormScreen> {
   bool    _loadingDist = false;
   String? _regionError;
 
-  bool    _saving   = false;
-  bool    _locating = false;
-  String? _gpsInfo;
-
+  bool    _saving = false;
   Map<String, String> _errors = {};
   String? _generalError;
 
@@ -67,11 +73,14 @@ class _AssetFormScreenState extends State<AssetFormScreen> {
     _photos = PhotoController(remote: a?.photos ?? const []);
 
     if (a != null) {
-      _nameCtrl.text    = a.name;
-      _codeCtrl.text    = a.code;
-      _typeCtrl.text    = a.type;
-      _addressCtrl.text = a.address;
-      _status           = a.status;
+      _idCtrl.text    = a.code;
+      _typeCtrl.text  = a.type;
+      _classCtrl.text = a.classification;
+      _groupCtrl.text = a.assetGroup;
+      _areaCtrl.text  = a.areaM2 == null ? '' : _fmtNum(a.areaM2!);
+      _gmapsCtrl.text = a.gmapsUrl;
+      _descCtrl.text  = a.description;
+      _status         = a.status;
       if (a.hasLocation) {
         _latCtrl.text = a.latitude!.toStringAsFixed(6);
         _lngCtrl.text = a.longitude!.toStringAsFixed(6);
@@ -85,14 +94,28 @@ class _AssetFormScreenState extends State<AssetFormScreen> {
 
   @override
   void dispose() {
-    _nameCtrl.dispose();
-    _codeCtrl.dispose();
-    _typeCtrl.dispose();
-    _addressCtrl.dispose();
-    _latCtrl.dispose();
-    _lngCtrl.dispose();
+    for (final c in [
+      _idCtrl, _typeCtrl, _classCtrl, _groupCtrl, _areaCtrl,
+      _latCtrl, _lngCtrl, _gmapsCtrl, _descCtrl,
+    ]) {
+      c.dispose();
+    }
     _photos.dispose();
     super.dispose();
+  }
+
+  String _fmtNum(double v) =>
+      v == v.roundToDouble() ? v.toInt().toString() : v.toString();
+
+  void _clearError(String key) {
+    if (_errors.containsKey(key)) {
+      setState(() => _errors = Map.of(_errors)..remove(key));
+    }
+  }
+
+  void _toast(String text) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
 
   // ── Wilayah ────────────────────────────────────────────────────────
@@ -187,8 +210,8 @@ class _AssetFormScreenState extends State<AssetFormScreen> {
       _districtId = null;
       _regencies  = [];
       _districts  = [];
-      _errors.remove('province_id');
     });
+    _clearError('province_id');
     if (id != null) _loadRegencies(id);
   }
 
@@ -197,37 +220,38 @@ class _AssetFormScreenState extends State<AssetFormScreen> {
       _regencyId  = id;
       _districtId = null;
       _districts  = [];
-      _errors.remove('regency_id');
     });
+    _clearError('regency_id');
     if (id != null) _loadDistricts(id);
   }
 
-  // ── GPS ────────────────────────────────────────────────────────────
-  void _toast(String text) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
-  }
+  // ── Koordinat ──────────────────────────────────────────────────────
+  double? _tryCoord(TextEditingController c) =>
+      double.tryParse(c.text.trim().replaceAll(',', '.'));
 
-  Future<void> _useGps() async {
-    if (_locating) return;
-    setState(() => _locating = true);
-    try {
-      final pos = await getCurrentPosition();
-      if (!mounted) return;
-      setState(() {
-        _latCtrl.text = pos.latitude.toStringAsFixed(6);
-        _lngCtrl.text = pos.longitude.toStringAsFixed(6);
-        _gpsInfo = 'Akurasi sekitar ${pos.accuracy.round()} meter';
-        _errors.remove('latitude');
-        _errors.remove('longitude');
-      });
-    } on LocationException catch (e) {
-      _toast(e.message);
-    } catch (_) {
-      _toast('Gagal mendapatkan lokasi. Coba lagi.');
-    } finally {
-      if (mounted) setState(() => _locating = false);
-    }
+  Future<void> _pickOnMap() async {
+    final lat = _tryCoord(_latCtrl);
+    final lng = _tryCoord(_lngCtrl);
+    final initial = (lat != null && lng != null) ? LatLng(lat, lng) : null;
+
+    final picked = await Navigator.push<LatLng>(
+      context,
+      MaterialPageRoute(builder: (_) => LocationPickerScreen(initial: initial)),
+    );
+    if (picked == null || !mounted) return;
+
+    setState(() {
+      _latCtrl.text = picked.latitude.toStringAsFixed(6);
+      _lngCtrl.text = picked.longitude.toStringAsFixed(6);
+      // Isi otomatis link Google Maps kalau masih kosong
+      if (_gmapsCtrl.text.trim().isEmpty) {
+        _gmapsCtrl.text =
+            'https://www.google.com/maps?q=${_latCtrl.text},${_lngCtrl.text}';
+      }
+      _errors = Map.of(_errors)
+        ..remove('latitude')
+        ..remove('longitude');
+    });
   }
 
   String? _validateCoord(
@@ -244,8 +268,13 @@ class _AssetFormScreenState extends State<AssetFormScreen> {
     return null;
   }
 
-  double _parseCoord(TextEditingController c) =>
-      double.parse(c.text.trim().replaceAll(',', '.'));
+  String? _validateArea(String? v) {
+    final t = (v ?? '').trim().replaceAll(',', '.');
+    if (t.isEmpty) return 'Luas wajib diisi';
+    final n = double.tryParse(t);
+    if (n == null || n < 0) return 'Luas tidak valid';
+    return null;
+  }
 
   // ── Simpan ─────────────────────────────────────────────────────────
   Future<void> _save() async {
@@ -260,6 +289,12 @@ class _AssetFormScreenState extends State<AssetFormScreen> {
       return;
     }
 
+    if (!_isEdit && _photos.total == 0) {
+      _photos.setMessage('Minimal 1 foto wajib diunggah.');
+      _toast('Tambahkan minimal 1 foto.');
+      return;
+    }
+
     setState(() {
       _saving       = true;
       _errors       = {};
@@ -267,16 +302,19 @@ class _AssetFormScreenState extends State<AssetFormScreen> {
     });
 
     final input = AssetInput(
-      name:       _nameCtrl.text.trim(),
-      code:       _codeCtrl.text.trim(),
-      type:       _typeCtrl.text.trim(),
-      address:    _addressCtrl.text.trim(),
-      status:     _status,
-      provinceId: _provinceId ?? '',
-      regencyId:  _regencyId ?? '',
-      districtId: _districtId ?? '',
-      latitude:   _parseCoord(_latCtrl),
-      longitude:  _parseCoord(_lngCtrl),
+      idAsset:        _idCtrl.text.trim(),
+      assetType:      _typeCtrl.text.trim(),
+      classification: _classCtrl.text.trim(),
+      assetGroup:     _groupCtrl.text.trim(),
+      provinceId:     _provinceId ?? '',
+      regencyId:      _regencyId ?? '',
+      districtId:     _districtId ?? '',
+      areaM2:         _areaCtrl.text.trim().replaceAll(',', '.'),
+      latitude:       _tryCoord(_latCtrl)!,
+      longitude:      _tryCoord(_lngCtrl)!,
+      gmapsUrl:       _gmapsCtrl.text.trim(),
+      status:         _status,
+      description:    _descCtrl.text.trim(),
     );
 
     final result = await _writer.save(
@@ -295,7 +333,6 @@ class _AssetFormScreenState extends State<AssetFormScreen> {
     }
 
     if (result.success) {
-      // Muat ulang daftar & peta di belakang layar
       context.read<AssetProvider>().load();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -307,7 +344,7 @@ class _AssetFormScreenState extends State<AssetFormScreen> {
       return;
     }
 
-    // Pesan umum: error tanpa kolom khusus (mis. foto) atau pesan server
+    // Error tanpa kolom khusus (mis. foto) ditampilkan di kotak merah
     final extra = result.fieldErrors.entries
         .where((e) => !_knownKeys.contains(e.key))
         .map((e) => e.value)
@@ -315,7 +352,7 @@ class _AssetFormScreenState extends State<AssetFormScreen> {
 
     setState(() {
       _saving = false;
-      _errors = result.fieldErrors;
+      _errors = Map.of(result.fieldErrors);
       _generalError = extra.isNotEmpty
           ? extra.join('\n')
           : (result.fieldErrors.isEmpty ? result.message : null);
@@ -325,9 +362,6 @@ class _AssetFormScreenState extends State<AssetFormScreen> {
   // ── UI ─────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    final typeSuggestions =
-        context.read<AssetProvider>().typeOptions.take(6).toList();
-
     return Scaffold(
       appBar: AppBar(title: Text(_isEdit ? 'Ubah Aset' : 'Tambah Aset')),
       bottomNavigationBar: SafeArea(
@@ -375,55 +409,41 @@ class _AssetFormScreenState extends State<AssetFormScreen> {
               const SizedBox(height: 16),
             ],
 
-            // ── Informasi aset ─────────────────────────────────────
-            const _SectionTitle('Informasi Aset'),
+            // ── Identitas aset ─────────────────────────────────────
+            const _SectionTitle('Identitas Aset'),
             AppTextField(
-              controller: _nameCtrl,
-              label: 'Nama aset',
-              hint: 'Masukkan nama aset',
-              icon: Icons.inventory_2_outlined,
-              textInputAction: TextInputAction.next,
-              errorText: _errors['name'],
-              onChanged: (_) => setState(() => _errors.remove('name')),
-              validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'Nama aset wajib diisi' : null,
-            ),
-            const SizedBox(height: 16),
-            AppTextField(
-              controller: _codeCtrl,
-              label: 'Kode / ID aset (opsional)',
-              hint: 'Kosongkan jika dibuat otomatis',
+              controller: _idCtrl,
+              label: 'ID Aset',
+              hint: 'Masukkan ID aset',
               icon: Icons.tag_rounded,
+              maxLength: 20,
               textInputAction: TextInputAction.next,
-              errorText: _errors['code'],
-              onChanged: (_) => setState(() => _errors.remove('code')),
+              errorText: _errors['id_asset'],
+              onChanged: (_) => _clearError('id_asset'),
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? 'ID aset wajib diisi' : null,
             ),
             const SizedBox(height: 16),
-            AppTextField(
+            _choiceField(
               controller: _typeCtrl,
-              label: 'Jenis aset',
-              hint: 'Contoh: Tanah, Bangunan',
-              icon: Icons.category_outlined,
-              textInputAction: TextInputAction.next,
-              errorText: _errors['type'],
-              onChanged: (_) => setState(() => _errors.remove('type')),
-              validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'Jenis aset wajib diisi' : null,
+              label: 'Jenis Aset',
+              options: _typeOptions,
+              errorKey: 'asset_type',
             ),
-            if (typeSuggestions.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                children: [
-                  for (final t in typeSuggestions)
-                    ActionChip(
-                      label: Text(t, style: const TextStyle(fontSize: 12)),
-                      onPressed: () => setState(() => _typeCtrl.text = t),
-                    ),
-                ],
-              ),
-            ],
+            const SizedBox(height: 16),
+            _choiceField(
+              controller: _classCtrl,
+              label: 'Klasifikasi',
+              options: _classOptions,
+              errorKey: 'classification',
+            ),
+            const SizedBox(height: 16),
+            _choiceField(
+              controller: _groupCtrl,
+              label: 'Kelompok Aset',
+              options: _groupOptions,
+              errorKey: 'asset_group',
+            ),
             const SizedBox(height: 16),
             const _FieldLabel('Status'),
             const SizedBox(height: 8),
@@ -449,9 +469,9 @@ class _AssetFormScreenState extends State<AssetFormScreen> {
                 ),
               ),
 
-            // ── Lokasi ─────────────────────────────────────────────
+            // ── Lokasi administratif ───────────────────────────────
             const SizedBox(height: 28),
-            const _SectionTitle('Lokasi'),
+            const _SectionTitle('Wilayah'),
             if (_regionError != null) ...[
               Row(
                 children: [
@@ -497,31 +517,29 @@ class _AssetFormScreenState extends State<AssetFormScreen> {
               value: _districtId,
               items: _districts,
               loading: _loadingDist,
-              required: false,
+              required: true,
               errorText: _errors['district_id'],
-              onChanged: (v) => setState(() {
-                _districtId = v;
-                _errors.remove('district_id');
-              }),
+              onChanged: (v) {
+                setState(() => _districtId = v);
+                _clearError('district_id');
+              },
             ),
             const SizedBox(height: 16),
             AppTextField(
-              controller: _addressCtrl,
-              label: 'Alamat',
-              hint: 'Alamat lengkap atau keterangan lokasi',
-              icon: Icons.place_outlined,
-              maxLines: 3,
-              textInputAction: TextInputAction.newline,
-              keyboardType: TextInputType.multiline,
-              errorText: _errors['address'],
-              onChanged: (_) => setState(() => _errors.remove('address')),
-              validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'Alamat wajib diisi' : null,
+              controller: _areaCtrl,
+              label: 'Luas (m²)',
+              hint: 'Contoh: 1250',
+              icon: Icons.square_foot_rounded,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              textInputAction: TextInputAction.next,
+              errorText: _errors['area_m2'],
+              onChanged: (_) => _clearError('area_m2'),
+              validator: _validateArea,
             ),
 
             // ── Koordinat ──────────────────────────────────────────
             const SizedBox(height: 28),
-            const _SectionTitle('Koordinat (GPS)'),
+            const _SectionTitle('Koordinat'),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -529,14 +547,14 @@ class _AssetFormScreenState extends State<AssetFormScreen> {
                   child: AppTextField(
                     controller: _latCtrl,
                     label: 'Latitude',
-                    hint: '-6.200000',
+                    hint: '-7.795600',
                     icon: Icons.south_rounded,
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                       signed: true,
                     ),
                     errorText: _errors['latitude'],
-                    onChanged: (_) => setState(() => _errors.remove('latitude')),
+                    onChanged: (_) => _clearError('latitude'),
                     validator: (v) => _validateCoord(
                       v,
                       min: -90,
@@ -550,14 +568,14 @@ class _AssetFormScreenState extends State<AssetFormScreen> {
                   child: AppTextField(
                     controller: _lngCtrl,
                     label: 'Longitude',
-                    hint: '106.816666',
+                    hint: '110.369500',
                     icon: Icons.east_rounded,
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                       signed: true,
                     ),
                     errorText: _errors['longitude'],
-                    onChanged: (_) => setState(() => _errors.remove('longitude')),
+                    onChanged: (_) => _clearError('longitude'),
                     validator: (v) => _validateCoord(
                       v,
                       min: -180,
@@ -573,17 +591,9 @@ class _AssetFormScreenState extends State<AssetFormScreen> {
               width: double.infinity,
               height: 48,
               child: OutlinedButton.icon(
-                onPressed: _locating ? null : _useGps,
-                icon: _locating
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.my_location_rounded, size: 20),
-                label: Text(
-                  _locating ? 'Mencari lokasi...' : 'Gunakan lokasi saya (GPS)',
-                ),
+                onPressed: _pickOnMap,
+                icon: const Icon(Icons.map_rounded, size: 20),
+                label: const Text('Pilih dari peta'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.primary,
                   side: const BorderSide(color: AppColors.primary),
@@ -593,14 +603,37 @@ class _AssetFormScreenState extends State<AssetFormScreen> {
                 ),
               ),
             ),
-            if (_gpsInfo != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Text(
-                  _gpsInfo!,
-                  style: const TextStyle(fontSize: 12, color: AppColors.gray500),
-                ),
-              ),
+            const SizedBox(height: 6),
+            const Text(
+              'Isi manual, atau pilih titik di peta (bisa pakai lokasi saya).',
+              style: TextStyle(fontSize: 12, color: AppColors.gray500),
+            ),
+            const SizedBox(height: 16),
+            AppTextField(
+              controller: _gmapsCtrl,
+              label: 'Link Google Maps (opsional)',
+              hint: 'https://maps.google.com/...',
+              icon: Icons.link_rounded,
+              keyboardType: TextInputType.url,
+              textInputAction: TextInputAction.next,
+              errorText: _errors['gmaps_url'],
+              onChanged: (_) => _clearError('gmaps_url'),
+            ),
+
+            // ── Keterangan ─────────────────────────────────────────
+            const SizedBox(height: 28),
+            const _SectionTitle('Keterangan'),
+            AppTextField(
+              controller: _descCtrl,
+              label: 'Deskripsi',
+              hint: 'Catatan atau keterangan aset',
+              icon: Icons.notes_rounded,
+              maxLines: 4,
+              keyboardType: TextInputType.multiline,
+              textInputAction: TextInputAction.newline,
+              errorText: _errors['description'],
+              onChanged: (_) => _clearError('description'),
+            ),
 
             // ── Foto ───────────────────────────────────────────────
             const SizedBox(height: 28),
@@ -610,6 +643,66 @@ class _AssetFormScreenState extends State<AssetFormScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _choiceField({
+    required TextEditingController controller,
+    required String label,
+    required List<String> options,
+    required String errorKey,
+  }) {
+    final value = options.contains(controller.text) ? controller.text : null;
+    final border = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: const BorderSide(color: AppColors.gray200),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _FieldLabel(label),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          value: value,
+          isExpanded: true,
+          hint: Text(
+            'Pilih $label',
+            style: const TextStyle(
+              fontSize: 14,
+              color: AppColors.gray400,
+            ),
+          ),
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: AppColors.white,
+            errorText: _errors[errorKey],
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            border: border,
+            enabledBorder: border,
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(
+                color: AppColors.primary,
+                width: 1.5,
+              ),
+            ),
+          ),
+          items: [
+            for (final o in options)
+              DropdownMenuItem<String>(
+                value: o,
+                child: Text(o),
+              ),
+          ],
+          onChanged: (v) {
+            setState(() => controller.text = v ?? '');
+            _clearError(errorKey);
+          },
+          validator: (v) => v == null ? 'Pilih $label' : null,
+        ),
+      ],
     );
   }
 

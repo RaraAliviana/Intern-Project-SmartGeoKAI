@@ -1,4 +1,6 @@
+
 import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:smartgeokai_mobile/core/constants/app_colors.dart';
@@ -11,49 +13,66 @@ class PhotoController extends ChangeNotifier {
   PhotoController({List<AssetPhoto> remote = const []})
       : remote = List.of(remote);
 
-  final List<AssetPhoto> remote;            // sudah ada di server
-  final List<Uint8List> local = [];         // baru, sudah dikompres
-  final List<String> removedRemoteIds = []; // foto lama yang dihapus
+  final List<AssetPhoto> remote;
+  final List<Uint8List> local = [];
+  final List<String> removedRemoteIds = [];
 
-  bool    busy    = false;
+  bool busy = false;
   String? message;
 
-  int  get total     => remote.length + local.length;
-  int  get remaining => maxPhotos - total;
-  bool get canAdd    => remaining > 0 && !busy;
+  int get total => remote.length + local.length;
+  int get remaining => maxPhotos - total;
+  bool get canAdd => remaining > 0 && !busy;
+
+  void setMessage(String? text) {
+    message = text;
+    notifyListeners();
+  }
 
   Future<void> addFiles(List<XFile> files) async {
     if (files.isEmpty) return;
 
-    busy    = true;
+    busy = true;
     message = null;
     notifyListeners();
 
     var skipped = 0;
-    var failed  = 0;
+    var failed = 0;
 
-    for (final f in files) {
-      if (remaining <= 0) {
-        skipped++;
-        continue;
+    try {
+      for (final f in files) {
+        if (remaining <= 0) {
+          skipped++;
+          continue;
+        }
+
+        try {
+          final bytes = await f.readAsBytes();
+          final compressed = await compressToMax1MB(bytes);
+
+          local.add(compressed);
+        } catch (_) {
+          failed++;
+        }
       }
-      try {
-        final bytes = await f.readAsBytes();
-        local.add(await compressToMax1MB(bytes));
-      } catch (_) {
-        failed++;
+
+      final notes = <String>[];
+
+      if (skipped > 0) {
+        notes.add(
+          '$skipped foto dilewati (maksimal $maxPhotos foto).',
+        );
       }
-    }
 
-    final notes = <String>[];
-    if (skipped > 0) {
-      notes.add('$skipped foto dilewati (maksimal $maxPhotos foto).');
-    }
-    if (failed > 0) notes.add('$failed foto gagal diproses.');
-    message = notes.isEmpty ? null : notes.join(' ');
+      if (failed > 0) {
+        notes.add('$failed foto gagal diproses.');
+      }
 
-    busy = false;
-    notifyListeners();
+      message = notes.isEmpty ? null : notes.join(' ');
+    } finally {
+      busy = false;
+      notifyListeners();
+    }
   }
 
   void removeLocal(int index) {
@@ -62,15 +81,23 @@ class PhotoController extends ChangeNotifier {
   }
 
   void removeRemote(int index) {
-    final p = remote.removeAt(index);
-    if (p.id != null) removedRemoteIds.add(p.id!);
+    final photo = remote.removeAt(index);
+
+    if (photo.id != null) {
+      removedRemoteIds.add(photo.id!);
+    }
+
     notifyListeners();
   }
 }
 
 class AssetPhotoPicker extends StatelessWidget {
   final PhotoController controller;
-  const AssetPhotoPicker({super.key, required this.controller});
+
+  const AssetPhotoPicker({
+    super.key,
+    required this.controller,
+  });
 
   Future<void> _pick(BuildContext context) async {
     final source = await showModalBottomSheet<ImageSource>(
@@ -79,7 +106,9 @@ class AssetPhotoPicker extends StatelessWidget {
       builder: (ctx) => Container(
         decoration: const BoxDecoration(
           color: AppColors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(24),
+          ),
         ),
         child: SafeArea(
           child: Column(
@@ -87,16 +116,24 @@ class AssetPhotoPicker extends StatelessWidget {
             children: [
               const SizedBox(height: 8),
               ListTile(
-                leading: const Icon(Icons.photo_camera_rounded,
-                    color: AppColors.primary),
+                leading: const Icon(
+                  Icons.photo_camera_rounded,
+                  color: AppColors.primary,
+                ),
                 title: const Text('Ambil dari kamera'),
-                onTap: () => Navigator.pop(ctx, ImageSource.camera),
+                onTap: () {
+                  Navigator.pop(ctx, ImageSource.camera);
+                },
               ),
               ListTile(
-                leading: const Icon(Icons.photo_library_rounded,
-                    color: AppColors.primary),
+                leading: const Icon(
+                  Icons.photo_library_rounded,
+                  color: AppColors.primary,
+                ),
                 title: const Text('Pilih dari galeri'),
-                onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+                onTap: () {
+                  Navigator.pop(ctx, ImageSource.gallery);
+                },
               ),
               const SizedBox(height: 8),
             ],
@@ -104,26 +141,36 @@ class AssetPhotoPicker extends StatelessWidget {
         ),
       ),
     );
+
     if (source == null) return;
 
     try {
       final picker = ImagePicker();
+
       if (source == ImageSource.camera) {
-        final f = await picker.pickImage(source: ImageSource.camera);
-        if (f != null) await controller.addFiles([f]);
+        final file = await picker.pickImage(
+          source: ImageSource.camera,
+        );
+
+        if (file != null) {
+          await controller.addFiles([file]);
+        }
       } else {
-        final list = await picker.pickMultiImage();
-        await controller.addFiles(list);
+        final files = await picker.pickMultiImage();
+        await controller.addFiles(files);
       }
     } catch (_) {
-      controller.message = 'Tidak dapat membuka kamera atau galeri.';
-      controller.notifyListeners();
+      controller.setMessage(
+        'Tidak dapat membuka kamera atau galeri.',
+      );
     }
   }
 
-  String _size(int bytes) => bytes < 1024 * 1024
-      ? '${(bytes / 1024).round()} KB'
-      : '${(bytes / (1024 * 1024)).toStringAsFixed(2)} MB';
+  String _size(int bytes) {
+    return bytes < 1024 * 1024
+        ? '${(bytes / 1024).round()} KB'
+        : '${(bytes / (1024 * 1024)).toStringAsFixed(2)} MB';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -138,20 +185,31 @@ class AssetPhotoPicker extends StatelessWidget {
                 controller.remote[i].url,
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => const Center(
-                  child: Icon(Icons.broken_image_rounded,
-                      color: AppColors.gray400),
+                  child: Icon(
+                    Icons.broken_image_rounded,
+                    color: AppColors.gray400,
+                  ),
                 ),
               ),
             ),
+
           for (var i = 0; i < controller.local.length; i++)
             _Thumb(
               onRemove: () => controller.removeLocal(i),
-              label: _size(controller.local[i].lengthInBytes),
-              child: Image.memory(controller.local[i], fit: BoxFit.cover),
+              label: _size(
+                controller.local[i].lengthInBytes,
+              ),
+              child: Image.memory(
+                controller.local[i],
+                fit: BoxFit.cover,
+              ),
             ),
+
           if (controller.canAdd || controller.busy)
             InkWell(
-              onTap: controller.canAdd ? () => _pick(context) : null,
+              onTap: controller.canAdd
+                  ? () => _pick(context)
+                  : null,
               borderRadius: BorderRadius.circular(14),
               child: Container(
                 decoration: BoxDecoration(
@@ -166,13 +224,17 @@ class AssetPhotoPicker extends StatelessWidget {
                       ? const SizedBox(
                           width: 22,
                           height: 22,
-                          child: CircularProgressIndicator(strokeWidth: 2.5),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                          ),
                         )
                       : const Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.add_a_photo_rounded,
-                                color: AppColors.accentDark),
+                            Icon(
+                              Icons.add_a_photo_rounded,
+                              color: AppColors.accentDark,
+                            ),
                             SizedBox(height: 4),
                             Text(
                               'Tambah',
@@ -218,12 +280,13 @@ class AssetPhotoPicker extends StatelessWidget {
             const Text(
               'Maksimal 10 foto. Setiap foto dikompres otomatis hingga '
               'di bawah 1 MB.',
-              style: TextStyle(fontSize: 12, color: AppColors.gray500),
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.gray500,
+              ),
             ),
             const SizedBox(height: 12),
-            if (tiles.isEmpty)
-              const SizedBox.shrink()
-            else
+            if (tiles.isNotEmpty)
               GridView.count(
                 crossAxisCount: 3,
                 shrinkWrap: true,
@@ -236,7 +299,10 @@ class AssetPhotoPicker extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 controller.message!,
-                style: const TextStyle(fontSize: 12, color: AppColors.error),
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.error,
+                ),
               ),
             ],
           ],
@@ -247,31 +313,44 @@ class AssetPhotoPicker extends StatelessWidget {
 }
 
 class _Thumb extends StatelessWidget {
-  final Widget       child;
+  final Widget child;
   final VoidCallback onRemove;
-  final String?      label;
+  final String? label;
 
-  const _Thumb({required this.child, required this.onRemove, this.label});
+  const _Thumb({
+    required this.child,
+    required this.onRemove,
+    this.label,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Stack(
       fit: StackFit.expand,
       children: [
-        ClipRRect(borderRadius: BorderRadius.circular(14), child: child),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: child,
+        ),
         if (label != null)
           Positioned(
             left: 6,
             bottom: 6,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 6,
+                vertical: 2,
+              ),
               decoration: BoxDecoration(
                 color: Colors.black.withValues(alpha: 0.6),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
                 label!,
-                style: const TextStyle(fontSize: 10, color: Colors.white),
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: Colors.white,
+                ),
               ),
             ),
           ),
@@ -287,8 +366,11 @@ class _Thumb extends StatelessWidget {
                 color: AppColors.error,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.close_rounded,
-                  size: 15, color: Colors.white),
+              child: const Icon(
+                Icons.close_rounded,
+                size: 15,
+                color: Colors.white,
+              ),
             ),
           ),
         ),

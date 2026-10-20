@@ -5,15 +5,16 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Asset;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class AssetController extends Controller
 {
     /**
      * GET /api/assets
      *
-     * Daftar aset.
-     * Petugas hanya dapat melihat aset yang berada
-     * di provinsi sesuai wilayah kerjanya.
+     * Daftar aset sesuai provinsi wilayah kerja petugas.
      */
     public function index(Request $request)
     {
@@ -23,27 +24,34 @@ class AssetController extends Controller
                 'province',
                 'regency',
                 'district',
+                'images',
             ])
             ->where('province_id', $user->province_id);
 
-        // Pencarian berdasarkan ID Asset atau keterangan
+        // Pencarian berdasarkan ID aset atau keterangan.
         if ($request->filled('search')) {
-            $search = $request->search;
+            $search = $request->input('search');
 
             $query->where(function ($q) use ($search) {
                 $q->where('id_asset', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%");
+                    ->orWhere('description', 'like', "%{$search}%");
             });
         }
 
-        // Filter berdasarkan status
+        // Filter berdasarkan status.
         if ($request->filled('status')) {
-            $query->where('status', $request->status);
+            $query->where('status', $request->input('status'));
         }
+
+        // Batas per halaman: minimal 1 dan maksimal 500.
+        $perPage = min(
+            max((int) $request->input('per_page', 15), 1),
+            500
+        );
 
         $assets = $query
             ->orderByDesc('created_at')
-            ->paginate(15);
+            ->paginate($perPage);
 
         return response()->json([
             'success' => true,
@@ -51,11 +59,10 @@ class AssetController extends Controller
         ]);
     }
 
-
     /**
      * POST /api/assets
      *
-     * Menambahkan aset baru dari aplikasi mobile Petugas.
+     * Menambahkan aset baru beserta minimal satu foto.
      */
     public function store(Request $request)
     {
@@ -71,27 +78,29 @@ class AssetController extends Controller
 
             'asset_type' => [
                 'required',
-                'in:Tanah,Bangunan',
+                Rule::in(['Tanah', 'Bangunan']),
             ],
 
             'classification' => [
                 'required',
-                'in:ROW,Fasilitas,Operasional',
+                Rule::in(['ROW', 'Fasilitas', 'Operasional']),
             ],
 
             'asset_group' => [
                 'required',
-                'in:Produksi,Non Produksi',
+                Rule::in(['Produksi', 'Non Produksi']),
             ],
 
             'regency_id' => [
                 'required',
-                'exists:regencies,id',
+                Rule::exists('regencies', 'id')
+                    ->where('province_id', $user->province_id),
             ],
 
             'district_id' => [
                 'required',
-                'exists:districts,id',
+                Rule::exists('districts', 'id')
+                    ->where('regency_id', $request->input('regency_id')),
             ],
 
             'area_m2' => [
@@ -120,12 +129,26 @@ class AssetController extends Controller
 
             'status' => [
                 'required',
-                'in:Clear,Proses,Masalah',
+                Rule::in(['Clear', 'Proses', 'Masalah']),
             ],
 
             'description' => [
                 'nullable',
                 'string',
+            ],
+
+            // Minimal satu foto dan maksimal sepuluh foto.
+            'photos' => [
+                'required',
+                'array',
+                'min:1',
+                'max:10',
+            ],
+
+            'photos.*' => [
+                'image',
+                'mimes:jpg,jpeg,png,webp',
+                'max:5120',
             ],
         ]);
 
@@ -135,27 +158,28 @@ class AssetController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        // Petugas tidak boleh menentukan provinsi sendiri.
         // Provinsi mengikuti wilayah kerja petugas.
         $validated['province_id'] = $user->province_id;
 
-        // Karena aset baru dibuat dengan status tertentu,
-        // waktu status pertama kali ditetapkan dicatat sekarang.
+        // Waktu status pertama kali ditetapkan.
         $validated['status_updated_at'] = now();
 
-        // User yang membuat aset
+        // User pembuat dan pengubah aset.
         $validated['created_by'] = $user->id;
-
-        // User terakhir yang mengubah aset
         $validated['updated_by'] = $user->id;
 
         /*
         |--------------------------------------------------------------------------
-        | Simpan aset
+        | Simpan aset dan foto
         |--------------------------------------------------------------------------
         */
 
+        // Foto disimpan secara terpisah, bukan di tabel assets.
+        unset($validated['photos']);
+
         $asset = Asset::create($validated);
+
+        $this->storePhotos($request, $asset);
 
         return response()->json([
             'success' => true,
@@ -164,10 +188,10 @@ class AssetController extends Controller
                 'province',
                 'regency',
                 'district',
+                'images',
             ]),
         ], 201);
     }
-
 
     /**
      * GET /api/assets/{asset}
@@ -176,8 +200,6 @@ class AssetController extends Controller
      */
     public function show(Request $request, Asset $asset)
     {
-        // Pastikan petugas hanya dapat melihat aset
-        // di wilayah kerjanya.
         $this->authorizeAssetAccess($request, $asset);
 
         return response()->json([
@@ -191,42 +213,47 @@ class AssetController extends Controller
         ]);
     }
 
-
     /**
      * PUT/PATCH /api/assets/{asset}
      *
-     * Memperbarui data aset dari aplikasi mobile.
+     * Memperbarui aset dan mengelola foto.
      */
     public function update(Request $request, Asset $asset)
     {
-        // Pastikan petugas hanya dapat mengubah aset
-        // di wilayah kerjanya.
         $this->authorizeAssetAccess($request, $asset);
 
         $validated = $request->validate([
             'asset_type' => [
                 'sometimes',
-                'in:Tanah,Bangunan',
+                Rule::in(['Tanah', 'Bangunan']),
             ],
 
             'classification' => [
                 'sometimes',
-                'in:ROW,Fasilitas,Operasional',
+                Rule::in(['ROW', 'Fasilitas', 'Operasional']),
             ],
 
             'asset_group' => [
                 'sometimes',
-                'in:Produksi,Non Produksi',
+                Rule::in(['Produksi', 'Non Produksi']),
             ],
 
             'regency_id' => [
                 'sometimes',
-                'exists:regencies,id',
+                Rule::exists('regencies', 'id')
+                    ->where('province_id', $request->user()->province_id),
             ],
 
             'district_id' => [
                 'sometimes',
-                'exists:districts,id',
+                Rule::exists('districts', 'id')
+                    ->where(
+                        'regency_id',
+                        $request->input(
+                            'regency_id',
+                            $asset->regency_id
+                        )
+                    ),
             ],
 
             'area_m2' => [
@@ -255,12 +282,37 @@ class AssetController extends Controller
 
             'status' => [
                 'sometimes',
-                'in:Clear,Proses,Masalah',
+                Rule::in(['Clear', 'Proses', 'Masalah']),
             ],
 
             'description' => [
                 'nullable',
                 'string',
+            ],
+
+            // ID foto lama yang ingin dihapus.
+            'delete_images' => [
+                'nullable',
+                'array',
+            ],
+
+            'delete_images.*' => [
+                'required',
+                'integer',
+                'exists:asset_images,id',
+            ],
+
+            // Foto baru bersifat opsional saat edit.
+            'photos' => [
+                'nullable',
+                'array',
+                'max:10',
+            ],
+
+            'photos.*' => [
+                'image',
+                'mimes:jpg,jpeg,png,webp',
+                'max:5120',
             ],
         ]);
 
@@ -268,15 +320,6 @@ class AssetController extends Controller
         |--------------------------------------------------------------------------
         | Update status_updated_at
         |--------------------------------------------------------------------------
-        |
-        | Kalau status berubah:
-        |
-        | Masalah -> Proses
-        | Proses -> Clear
-        | Clear -> Masalah
-        |
-        | maka waktu perubahan status dicatat ulang.
-        |
         */
 
         if (
@@ -296,17 +339,50 @@ class AssetController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | Simpan perubahan
+        | Foto: hapus yang dipilih, lalu simpan foto baru
+        |--------------------------------------------------------------------------
+        */
+
+        $deleteIds = $validated['delete_images'] ?? [];
+        $newCount = count($request->file('photos', []));
+
+        // Hitung foto yang tersisa setelah foto terpilih dihapus.
+        $remaining = $asset->images()
+            ->whereNotIn('id', $deleteIds)
+            ->count();
+
+        if ($remaining + $newCount > 10) {
+            throw ValidationException::withMessages([
+                'photos' => 'Maksimal 10 foto per aset.',
+            ]);
+        }
+
+        foreach ($deleteIds as $imageId) {
+            // Hanya menghapus foto milik aset yang sedang diedit.
+            $image = $asset->images()->find($imageId);
+
+            if ($image) {
+                Storage::disk('public')->delete($image->file_path);
+                $image->delete();
+            }
+        }
+
+        // Simpan foto baru jika ada.
+        $this->storePhotos($request, $asset);
+
+        // Field foto tidak boleh dikirim ke tabel assets.
+        unset(
+            $validated['delete_images'],
+            $validated['photos']
+        );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Simpan perubahan aset
         |--------------------------------------------------------------------------
         */
 
         $asset->update($validated);
-
-        /*
-        |--------------------------------------------------------------------------
-        | Return data terbaru
-        |--------------------------------------------------------------------------
-        */
 
         return response()->json([
             'success' => true,
@@ -322,7 +398,6 @@ class AssetController extends Controller
         ]);
     }
 
-
     /**
      * DELETE /api/assets/{asset}
      *
@@ -330,8 +405,6 @@ class AssetController extends Controller
      */
     public function destroy(Request $request, Asset $asset)
     {
-        // Pastikan petugas hanya dapat menghapus aset
-        // di wilayah kerjanya.
         $this->authorizeAssetAccess($request, $asset);
 
         $asset->delete();
@@ -342,18 +415,34 @@ class AssetController extends Controller
         ]);
     }
 
+    /**
+     * Menyimpan foto ke storage publik dan tabel asset_images.
+     */
+    private function storePhotos(Request $request, Asset $asset): void
+    {
+        foreach ($request->file('photos', []) as $photo) {
+            $path = $photo->store('assets/images', 'public');
+
+            $asset->images()->create([
+                'file_path' => $path,
+                'file_name' => $photo->getClientOriginalName(),
+                'file_size' => $photo->getSize(),
+                'uploaded_by' => $request->user()->id,
+            ]);
+        }
+    }
 
     /**
-     * Memastikan petugas hanya dapat mengakses
-     * aset yang berada di provinsi wilayah kerjanya.
+     * Memastikan petugas hanya dapat mengakses aset
+     * di provinsi wilayah kerjanya.
      */
     private function authorizeAssetAccess(
         Request $request,
         Asset $asset
     ): void {
         if (
-            $asset->province_id !==
-            $request->user()->province_id
+            (string) $asset->province_id !==
+            (string) $request->user()->province_id
         ) {
             abort(
                 403,

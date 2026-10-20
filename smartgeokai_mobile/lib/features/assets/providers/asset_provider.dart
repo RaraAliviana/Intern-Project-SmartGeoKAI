@@ -1,5 +1,6 @@
 
 import 'package:flutter/material.dart';
+
 import '../models/asset_model.dart';
 import '../services/asset_service.dart';
 
@@ -8,8 +9,7 @@ class AssetProvider extends ChangeNotifier {
 
   // Dipakai bersama oleh tab Peta dan tab Aset
   // supaya teks pencarian tetap sinkron.
-  final TextEditingController searchController =
-      TextEditingController();
+  final TextEditingController searchController = TextEditingController();
 
   List<AssetModel> _all = const [];
   bool _loading = false;
@@ -50,7 +50,7 @@ class AssetProvider extends ChangeNotifier {
   List<AssetModel> get filtered => _filter(ignoreStatus: false);
 
   // Jumlah aset berdasarkan status.
-  // Perhitungan ini mengikuti filter lokasi, jenis, dan pencarian.
+  // Mengikuti filter lokasi, jenis, dan pencarian.
   Map<AssetStatus, int> get statusCounts {
     final base = _filter(ignoreStatus: true);
 
@@ -58,6 +58,34 @@ class AssetProvider extends ChangeNotifier {
       for (final s in AssetStatus.values)
         s: base.where((a) => a.status == s).length,
     };
+  }
+
+  // ============================================================
+  // OPSI KLASIFIKASI DAN GRUP ASET
+  // ============================================================
+
+  // Mengambil pilihan klasifikasi unik dari data aset.
+  List<String> get classificationOptions =>
+      _distinctOf((a) => a.classification);
+
+  // Mengambil pilihan grup aset unik dari data aset.
+  List<String> get groupOptions =>
+      _distinctOf((a) => a.assetGroup);
+
+  // Mengambil nilai unik, menghapus nilai kosong,
+  // kemudian mengurutkannya berdasarkan abjad.
+  List<String> _distinctOf(String Function(AssetModel a) pick) {
+    final set = <String>{};
+
+    for (final a in _all) {
+      final value = pick(a).trim();
+
+      if (value.isNotEmpty) {
+        set.add(value);
+      }
+    }
+
+    return set.toList()..sort();
   }
 
   // ============================================================
@@ -76,7 +104,6 @@ class AssetProvider extends ChangeNotifier {
   }
 
   // Mengambil aktivitas aset terbaru.
-  // Parameter limit digunakan untuk membatasi jumlah data.
   List<AssetModel> recentActivities({int? limit}) {
     final list = _all
         .where((a) => a.activityTime != null)
@@ -85,9 +112,7 @@ class AssetProvider extends ChangeNotifier {
         (a, b) => b.activityTime!.compareTo(a.activityTime!),
       );
 
-    return limit == null
-        ? list
-        : list.take(limit).toList();
+    return limit == null ? list : list.take(limit).toList();
   }
 
   // Dipakai kartu dashboard untuk menampilkan aset berdasarkan status.
@@ -243,9 +268,7 @@ class AssetProvider extends ChangeNotifier {
     final q = _query.trim().toLowerCase();
 
     return _all.where((a) {
-      if (!ignoreStatus &&
-          _status != null &&
-          a.status != _status) {
+      if (!ignoreStatus && _status != null && a.status != _status) {
         return false;
       }
 
