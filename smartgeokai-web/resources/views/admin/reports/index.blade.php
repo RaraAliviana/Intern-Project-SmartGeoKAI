@@ -25,24 +25,6 @@
             </p>
         </div>
 
-        <div class="flex flex-wrap items-center gap-2">
-
-            {{-- Export CSV --}}
-            <a href="{{ route('admin.reports.export.csv', request()->query()) }}"
-               class="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-green-700">
-                <i class="fa-solid fa-file-csv"></i>
-                <span>Export CSV</span>
-            </a>
-
-            {{-- Export PDF --}}
-            <a href="{{ route('admin.reports.export.pdf', request()->query()) }}"
-               class="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-red-700">
-                <i class="fa-solid fa-file-pdf"></i>
-                <span>Export PDF</span>
-            </a>
-
-        </div>
-
     </div>
 
 

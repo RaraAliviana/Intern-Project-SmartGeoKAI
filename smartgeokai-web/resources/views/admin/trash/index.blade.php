@@ -15,11 +15,11 @@
                     Daftar Aset
                 </a>
                 <i class="fa-solid fa-chevron-right text-xs"></i>
-                <span>Tong Sampah</span>
+                <span>Arsip Terhapus
             </div>
 
             <h1 class="text-2xl font-bold text-gray-800">
-                Tong Sampah Aset
+                Arsip Asset us
             </h1>
 
             <p class="mt-1 text-sm text-gray-500">
@@ -244,7 +244,7 @@
                                 </div>
 
                                 <h3 class="mt-4 text-sm font-semibold text-gray-700">
-                                    Tong Sampah Kosong
+                                    Arsip Asset Kosong
                                 </h3>
 
                                 <p class="mt-1 text-sm text-gray-400">

@@ -60,4 +60,14 @@ class AuditLogController extends Controller
 
         return view('admin.log-audit.index', compact('logs', 'officers', 'usersList'));
     }
+
+    /**
+     * Menampilkan detail log audit tertentu.
+     */
+    public function show($id)
+    {
+        $log = AuditLog::with(['user', 'asset'])->findOrFail($id);
+
+        return view('admin.log-audit.show', compact('log'));
+    }
 }

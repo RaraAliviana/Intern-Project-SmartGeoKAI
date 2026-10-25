@@ -279,7 +279,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       // Footer
                       Center(
                         child: Text(
-                          'SmartGeoKAI v2 — PT Kereta Api Indonesia',
+                          'SmartGeoKAI — PT Kereta Api Indonesia',
                           style: TextStyle(
                             fontSize: 12,
                             color: AppColors.gray400,

@@ -257,7 +257,7 @@ class AssetController extends Controller
 
         return redirect()
             ->route('admin.assets.index')
-            ->with('success', 'Aset dipindahkan ke tong sampah.');
+            ->with('success', 'Aset dipindahkan ke Arsip Terhapus. Anda dapat memulihkannya dari menu Arsip Terhapus.');
     }
 
     /*
