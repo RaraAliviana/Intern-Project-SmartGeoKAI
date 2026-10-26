@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/asset_model.dart';
-import '../providers/asset_provider.dart';
-import 'asset_filter_sheet.dart';
-import '../../../core/constants/app_colors.dart';
+import 'package:smartgeokai_mobile/core/constants/app_colors.dart';
+import 'package:smartgeokai_mobile/features/assets/models/asset_model.dart';
+import 'package:smartgeokai_mobile/features/assets/providers/asset_provider.dart';
+import 'package:smartgeokai_mobile/features/assets/widgets/asset_filter_sheet.dart';
 
 class AssetSearchBar extends StatelessWidget {
   const AssetSearchBar({super.key});
@@ -20,13 +20,6 @@ class AssetSearchBar extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppColors.white,
               borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 14,
-                  offset: const Offset(0, 4),
-                ),
-              ],
             ),
             child: TextField(
               controller: p.searchController,
@@ -52,6 +45,9 @@ class AssetSearchBar extends StatelessWidget {
                       )
                     : null,
                 border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                filled: false,
                 contentPadding: const EdgeInsets.symmetric(vertical: 14),
               ),
             ),
@@ -63,12 +59,12 @@ class AssetSearchBar extends StatelessWidget {
           label: Text('${p.activeFilterCount}'),
           backgroundColor: AppColors.error,
           child: Material(
-            color: AppColors.primary,
+            color: AppColors.accent,
             borderRadius: BorderRadius.circular(16),
-            elevation: 3,
-            shadowColor: Colors.black26,
             child: InkWell(
               borderRadius: BorderRadius.circular(16),
+              // Kalau nama fungsi di asset_filter_sheet.dart berbeda,
+              // samakan namanya di baris ini.
               onTap: () => showAssetFilterSheet(context),
               child: const SizedBox(
                 width: 50,
@@ -91,18 +87,21 @@ class AssetStatusFilterRow extends StatelessWidget {
     final p      = context.watch<AssetProvider>();
     final counts = p.statusCounts;
 
-    return Row(
-      children: [
-        for (final s in AssetStatus.values) ...[
-          _StatusChip(
-            status: s,
-            count: counts[s] ?? 0,
-            selected: p.status == s,
-            onTap: () => p.toggleStatus(s),
-          ),
-          const SizedBox(width: 8),
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          for (final s in AssetStatus.values) ...[
+            _StatusChip(
+              status: s,
+              count: counts[s] ?? 0,
+              selected: p.status == s,
+              onTap: () => p.toggleStatus(s),
+            ),
+            const SizedBox(width: 8),
+          ],
         ],
-      ],
+      ),
     );
   }
 }
@@ -123,10 +122,9 @@ class _StatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: selected ? status.color.withValues(alpha: 0.2) : AppColors.white,
+      // Tidak dipilih: transparan putih. Dipilih: putih penuh.
+      color: selected ? AppColors.white : Colors.white.withValues(alpha: 0.14),
       borderRadius: BorderRadius.circular(20),
-      elevation: selected ? 0 : 2,
-      shadowColor: Colors.black26,
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
         onTap: onTap,
@@ -135,7 +133,9 @@ class _StatusChip extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: selected ? status.color : Colors.transparent,
+              color: selected
+                  ? status.color
+                  : Colors.white.withValues(alpha: 0.28),
               width: 1.4,
             ),
           ),
@@ -153,10 +153,10 @@ class _StatusChip extends StatelessWidget {
               const SizedBox(width: 6),
               Text(
                 '${status.label} $count',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.gray800,
+                  color: selected ? AppColors.primary : Colors.white,
                 ),
               ),
             ],

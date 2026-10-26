@@ -1,4 +1,3 @@
-
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -6,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:smartgeokai_mobile/core/constants/app_colors.dart';
 import 'package:smartgeokai_mobile/core/utils/image_compressor.dart';
 import 'package:smartgeokai_mobile/features/assets/models/asset_model.dart';
+import 'package:smartgeokai_mobile/features/assets/widgets/asset_photo_strip.dart';
 
 class PhotoController extends ChangeNotifier {
   static const int maxPhotos = 10;
@@ -178,21 +178,14 @@ class AssetPhotoPicker extends StatelessWidget {
       listenable: controller,
       builder: (context, _) {
         final tiles = <Widget>[
+          // Foto lama dari server.
           for (var i = 0; i < controller.remote.length; i++)
             _Thumb(
               onRemove: () => controller.removeRemote(i),
-              child: Image.network(
-                controller.remote[i].url,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const Center(
-                  child: Icon(
-                    Icons.broken_image_rounded,
-                    color: AppColors.gray400,
-                  ),
-                ),
-              ),
+              child: networkPhoto(controller.remote[i].url),
             ),
 
+          // Foto baru yang dipilih dari kamera atau galeri.
           for (var i = 0; i < controller.local.length; i++)
             _Thumb(
               onRemove: () => controller.removeLocal(i),
@@ -205,6 +198,7 @@ class AssetPhotoPicker extends StatelessWidget {
               ),
             ),
 
+          // Tombol tambah foto.
           if (controller.canAdd || controller.busy)
             InkWell(
               onTap: controller.canAdd

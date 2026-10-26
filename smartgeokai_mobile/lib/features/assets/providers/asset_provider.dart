@@ -21,6 +21,8 @@ class AssetProvider extends ChangeNotifier {
   String? _regency;
   String? _district;
   String? _type;
+  String? _classification;
+  String? _assetGroup;
   AssetStatus? _status;
 
   // ============================================================
@@ -36,21 +38,30 @@ class AssetProvider extends ChangeNotifier {
   String? get regency => _regency;
   String? get district => _district;
   String? get type => _type;
+  String? get classification => _classification;
+  String? get assetGroup => _assetGroup;
   AssetStatus? get status => _status;
 
+  // Menghitung semua filter yang sedang aktif.
   int get activeFilterCount => [
         _province,
         _regency,
         _district,
         _type,
+        _classification,
+        _assetGroup,
         _status,
       ].where((e) => e != null).length;
 
   // Semua aset setelah pencarian dan filter diterapkan.
   List<AssetModel> get filtered => _filter(ignoreStatus: false);
 
+  // ============================================================
+  // RINGKASAN STATUS
+  // ============================================================
+
   // Jumlah aset berdasarkan status.
-  // Mengikuti filter lokasi, jenis, dan pencarian.
+  // Mengikuti filter lokasi, jenis, klasifikasi, grup, dan pencarian.
   Map<AssetStatus, int> get statusCounts {
     final base = _filter(ignoreStatus: true);
 
@@ -64,11 +75,9 @@ class AssetProvider extends ChangeNotifier {
   // OPSI KLASIFIKASI DAN GRUP ASET
   // ============================================================
 
-  // Mengambil pilihan klasifikasi unik dari data aset.
   List<String> get classificationOptions =>
       _distinctOf((a) => a.classification);
 
-  // Mengambil pilihan grup aset unik dari data aset.
   List<String> get groupOptions =>
       _distinctOf((a) => a.assetGroup);
 
@@ -124,6 +133,8 @@ class AssetProvider extends ChangeNotifier {
     _regency = null;
     _district = null;
     _type = null;
+    _classification = null;
+    _assetGroup = null;
 
     _status = s;
 
@@ -187,6 +198,8 @@ class AssetProvider extends ChangeNotifier {
       _regency = null;
       _district = null;
       _type = null;
+      _classification = null;
+      _assetGroup = null;
       _status = null;
     }
 
@@ -225,25 +238,32 @@ class AssetProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Menerapkan filter aset.
+  // ============================================================
+  // MENERAPKAN FILTER
+  // ============================================================
+
   void applyFilters({
     String? province,
     String? regency,
     String? district,
     String? type,
+    String? classification,
+    String? assetGroup,
     AssetStatus? status,
   }) {
     _province = province;
     _regency = regency;
     _district = district;
     _type = type;
+    _classification = classification;
+    _assetGroup = assetGroup;
     _status = status;
 
     _fitVersion++;
     notifyListeners();
   }
 
-  // Menghapus semua filter.
+  // Menghapus semua filter dan pencarian.
   void resetFilters() {
     _query = '';
     searchController.clear();
@@ -252,6 +272,8 @@ class AssetProvider extends ChangeNotifier {
     _regency = null;
     _district = null;
     _type = null;
+    _classification = null;
+    _assetGroup = null;
     _status = null;
 
     _fitVersion++;
@@ -268,10 +290,12 @@ class AssetProvider extends ChangeNotifier {
     final q = _query.trim().toLowerCase();
 
     return _all.where((a) {
+      // Filter status.
       if (!ignoreStatus && _status != null && a.status != _status) {
         return false;
       }
 
+      // Filter lokasi.
       if (_province != null && a.province != _province) {
         return false;
       }
@@ -284,10 +308,23 @@ class AssetProvider extends ChangeNotifier {
         return false;
       }
 
+      // Filter jenis aset.
       if (_type != null && a.type != _type) {
         return false;
       }
 
+      // Filter klasifikasi.
+      if (_classification != null &&
+          a.classification != _classification) {
+        return false;
+      }
+
+      // Filter grup aset.
+      if (_assetGroup != null && a.assetGroup != _assetGroup) {
+        return false;
+      }
+
+      // Filter pencarian.
       if (q.isNotEmpty &&
           !(a.name.toLowerCase().contains(q) ||
               a.code.toLowerCase().contains(q) ||
