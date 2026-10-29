@@ -1,4 +1,3 @@
-
 @extends('layouts.app')
 
 @section('title', 'Tambah Pengguna')
@@ -14,7 +13,6 @@
             method="POST"
             action="{{ route('admin.users.store') }}"
             class="space-y-5"
-            x-data="{ role: @js(old('role', 'petugas')) }"
         >
             @csrf
 
@@ -86,101 +84,82 @@
                 @enderror
             </div>
 
+            <div>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700">
+                    Konfirmasi Password
+                </label>
+                <input
+                    type="password"
+                    name="password_confirmation"
+                    required
+                    minlength="8"
+                    placeholder="Ulangi password"
+                    class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-800 outline-none transition focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10"
+                >
+            </div>
+
             {{-- Role --}}
             <div>
                 <label class="mb-1.5 block text-sm font-medium text-gray-700">
-                    Role Pengguna
+                    Role
                 </label>
 
-                <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                    @if (auth()->user()?->role === 'superadmin')
-                        <label
-                            class="flex cursor-pointer items-center gap-2 rounded-lg border px-4 py-3 text-sm font-medium transition"
-                            :class="role === 'superadmin'
-                                ? 'border-purple-500 bg-purple-50 text-purple-700'
-                                : 'border-gray-300 text-gray-600 hover:bg-gray-50'"
-                        >
-                            <input
-                                type="radio"
-                                name="role"
-                                value="superadmin"
-                                x-model="role"
-                                class="sr-only"
-                            >
-                            <i class="fa-solid fa-user-shield"></i>
-                            Super Admin
-                        </label>
-                    @endif
-
-                    <label
-                        class="flex cursor-pointer items-center gap-2 rounded-lg border px-4 py-3 text-sm font-medium transition"
-                        :class="role === 'admin'
-                            ? 'border-brand-500 bg-brand-50 text-brand-600'
-                            : 'border-gray-300 text-gray-600 hover:bg-gray-50'"
+                @if(count($availableRoles) === 1)
+                    {{-- Admin: langsung hidden, tidak ada pilihan --}}
+                    <input type="hidden" name="role" value="petugas">
+                    <div class="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5">
+                        <i class="fa-solid fa-user text-gray-400"></i>
+                        <span class="text-sm text-gray-600">Petugas</span>
+                        <span class="ml-auto rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
+                            Hanya role ini yang tersedia
+                        </span>
+                    </div>
+                @else
+                    {{-- Superadmin: bisa pilih --}}
+                    <select
+                        name="role"
+                        id="role"
+                        class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-800 outline-none transition focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10"
+                        onchange="toggleProvinceField(this.value)"
                     >
-                        <input
-                            type="radio"
-                            name="role"
-                            value="admin"
-                            x-model="role"
-                            class="sr-only"
-                        >
-                        <i class="fa-solid fa-user-shield"></i>
-                        Admin
-                    </label>
-
-                    <label
-                        class="flex cursor-pointer items-center gap-2 rounded-lg border px-4 py-3 text-sm font-medium transition"
-                        :class="role === 'petugas'
-                            ? 'border-brand-500 bg-brand-50 text-brand-600'
-                            : 'border-gray-300 text-gray-600 hover:bg-gray-50'"
-                    >
-                        <input
-                            type="radio"
-                            name="role"
-                            value="petugas"
-                            x-model="role"
-                            class="sr-only"
-                        >
-                        <i class="fa-solid fa-user"></i>
-                        Petugas
-                    </label>
-                </div>
+                        @foreach($availableRoles as $value => $label)
+                            <option value="{{ $value }}" {{ old('role') == $value ? 'selected' : '' }}>
+                                {{ $label }}
+                            </option>
+                        @endforeach
+                    </select>
+                @endif
 
                 @error('role')
-                    <p class="mt-1 text-xs text-error-600">{{ $message }}</p>
+                    <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
                 @enderror
             </div>
 
-            {{-- Wilayah kerja hanya untuk Petugas --}}
-            <div x-show="role === 'petugas'" x-cloak x-transition>
+            {{-- Wilayah Kerja — hanya muncul jika role petugas --}}
+            <div id="province-field" class="{{ old('role', 'petugas') === 'admin' ? 'hidden' : '' }}">
                 <label class="mb-1.5 block text-sm font-medium text-gray-700">
-                    Wilayah Kerja (Provinsi)
+                    Wilayah Kerja
                 </label>
 
                 <select
                     name="province_id"
                     class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-800 outline-none transition focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10"
                 >
-                    <option value="">Semua Wilayah (tidak dibatasi)</option>
-
-                    @foreach ($provinces as $province)
-                        <option
-                            value="{{ $province->id }}"
-                            @selected(old('province_id') == $province->id)
-                        >
-                            {{ $province->name }}
+                    <option value="">-- Semua Wilayah --</option>
+                    @foreach($provinces as $p)
+                        <option value="{{ $p->id }}" {{ old('province_id') == $p->id ? 'selected' : '' }}>
+                            {{ $p->name }}
                         </option>
                     @endforeach
                 </select>
 
-                @error('province_id')
-                    <p class="mt-1 text-xs text-error-600">{{ $message }}</p>
-                @enderror
-
                 <p class="mt-1 text-xs text-gray-400">
-                    Pilih provinsi jika akses petugas ingin dibatasi ke wilayah tertentu.
+                    Kosongkan jika petugas bisa akses semua wilayah
                 </p>
+
+                @error('province_id')
+                    <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
+                @enderror
             </div>
 
             <div class="flex gap-3">
@@ -201,3 +180,13 @@
         </form>
     </div>
 @endsection
+
+@push('scripts')
+<script>
+function toggleProvinceField(role) {
+    const field = document.getElementById('province-field');
+    if (!field) return;
+    field.classList.toggle('hidden', role === 'admin');
+}
+</script>
+@endpush
