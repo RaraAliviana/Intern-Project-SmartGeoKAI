@@ -18,8 +18,8 @@ class UserController extends Controller
     private function allowedRoles(): array
     {
         return Auth::user()?->role === 'superadmin'
-            ? ['superadmin', 'admin', 'petugas']
-            : ['admin', 'petugas'];
+            ? ['admin', 'petugas']
+            : ['petugas'];
     }
 
     public function index()
@@ -29,51 +29,68 @@ class UserController extends Controller
 
     public function create()
     {
+        // Role yang bisa dibuat tergantung siapa yang login
+        $availableRoles = Auth::user()?->role === 'superadmin'
+            ? ['admin' => 'Admin', 'petugas' => 'Petugas']
+            : ['petugas' => 'Petugas'];
+
         $provinces = Province::orderBy('name')->get();
 
-        return view('admin.users.create', compact('provinces'));
+        return view('admin.users.create', compact('availableRoles', 'provinces'));
     }
 
     public function store(Request $request)
     {
+        $allowedRoles = $this->allowedRoles();
+
         $validated = $request->validate([
-            'full_name' => ['required', 'string', 'max:100'],
-            'username' => ['required', 'string', 'max:50', 'unique:users,username'],
-            'nip' => ['required', 'string', 'max:20', 'unique:users,nip'],
-            'password' => ['required', 'string', 'min:8'],
-            'role' => ['required', Rule::in($this->allowedRoles())],
-            'province_id' => ['nullable', 'required_if:role,petugas', 'exists:provinces,id'],
+            'full_name'   => ['required', 'string', 'max:100'],
+            'username'    => ['required', 'string', 'max:50', 'unique:users,username'],
+            'nip'         => ['required', 'string', 'max:20', 'unique:users,nip'],
+            'password'    => ['required', 'string', 'min:8', 'confirmed'],
+            'role'        => ['required', Rule::in($allowedRoles)],
+            'province_id' => ['nullable', 'exists:provinces,id'],
+            'is_active'   => ['boolean'],
         ], [
             'username.unique' => 'Username sudah digunakan.',
             'nip.unique' => 'NIP sudah terdaftar.',
             'role.in' => 'Role yang dipilih tidak diizinkan.',
-            'province_id.required_if' => 'Pilih provinsi untuk petugas.',
+            'password.confirmed' => 'Konfirmasi password tidak cocok.',
+            'province_id.exists' => 'Provinsi yang dipilih tidak valid.',
         ]);
 
-        $isFieldOfficer = $validated['role'] === 'petugas';
+        $validated['password'] = Hash::make($validated['password']);
+        $validated['is_active'] = $request->boolean('is_active', true);
+        
+        // Admin tidak perlu batasan wilayah
+        $validated['province_id'] = $validated['role'] === 'admin'
+            ? null
+            : ($validated['province_id'] ?? null);
 
-        User::create([
-            'full_name' => $validated['full_name'],
-            'username' => $validated['username'],
-            'nip' => $validated['nip'],
-            'password' => Hash::make($validated['password']),
-            'role' => $validated['role'],
-            'province_id' => $isFieldOfficer
-                ? ($validated['province_id'] ?? null)
-                : null,
-            'is_active' => true,
-        ]);
+        User::create($validated);
 
         return redirect()
             ->route('admin.users.index')
-            ->with('success', 'Pengguna berhasil ditambahkan.');
+            ->with('success', 'Akun berhasil ditambahkan.');
     }
 
     public function edit(User $user)
     {
+        // Admin biasa tidak boleh mengubah akun Super Admin.
+        if (
+            $user->role === 'superadmin'
+            && Auth::user()?->role !== 'superadmin'
+        ) {
+            abort(403, 'Hanya Super Admin yang dapat mengubah akun Super Admin.');
+        }
+
+        $availableRoles = Auth::user()?->role === 'superadmin'
+            ? ['admin' => 'Admin', 'petugas' => 'Petugas']
+            : ['petugas' => 'Petugas'];
+
         $provinces = Province::orderBy('name')->get();
 
-        return view('admin.users.edit', compact('user', 'provinces'));
+        return view('admin.users.edit', compact('user', 'availableRoles', 'provinces'));
     }
 
     public function update(Request $request, User $user)
@@ -86,32 +103,32 @@ class UserController extends Controller
             abort(403, 'Hanya Super Admin yang dapat mengubah akun Super Admin.');
         }
 
+        $allowedRoles = $this->allowedRoles();
+
         $validated = $request->validate([
-            'full_name' => ['required', 'string', 'max:100'],
-            'username' => [
+            'full_name'   => ['required', 'string', 'max:100'],
+            'username'    => [
                 'required',
                 'string',
                 'max:50',
                 Rule::unique('users', 'username')->ignore($user->id),
             ],
-            'nip' => [
+            'nip'         => [
                 'required',
                 'string',
                 'max:20',
                 Rule::unique('users', 'nip')->ignore($user->id),
             ],
-            'role' => ['required', Rule::in($this->allowedRoles())],
-            'province_id' => [
-                'nullable',
-                'required_if:role,petugas',
-                'exists:provinces,id',
-            ],
-            'password' => ['nullable', 'string', 'min:8'],
+            'role'        => ['required', Rule::in($allowedRoles)],
+            'province_id' => ['nullable', 'exists:provinces,id'],
+            'password'    => ['nullable', 'string', 'min:8', 'confirmed'],
+            'is_active'   => ['boolean'],
         ], [
             'username.unique' => 'Username sudah digunakan.',
             'nip.unique' => 'NIP sudah terdaftar.',
             'role.in' => 'Role yang dipilih tidak diizinkan.',
-            'province_id.required_if' => 'Pilih provinsi untuk petugas.',
+            'password.confirmed' => 'Konfirmasi password tidak cocok.',
+            'province_id.exists' => 'Provinsi yang dipilih tidak valid.',
         ]);
 
         // Akun sendiri tidak boleh berganti role.
@@ -126,23 +143,23 @@ class UserController extends Controller
                 ->withInput();
         }
 
-        $user->full_name = $validated['full_name'];
-        $user->username = $validated['username'];
-        $user->nip = $validated['nip'];
-        $user->role = $validated['role'];
-
-        $user->province_id = $validated['role'] === 'petugas'
-            ? ($validated['province_id'] ?? null)
-            : null;
-
-        if (! empty($validated['password'])) {
-            $user->password = Hash::make($validated['password']);
+        if (!empty($validated['password'])) {
+            $validated['password'] = Hash::make($validated['password']);
+        } else {
+            unset($validated['password']);
         }
 
-        $user->save();
+        $validated['is_active'] = $request->boolean('is_active', $user->is_active);
+
+        // Admin tidak perlu batasan wilayah
+        $validated['province_id'] = $validated['role'] === 'admin'
+            ? null
+            : ($validated['province_id'] ?? null);
+
+        $user->update($validated);
 
         return redirect()
             ->route('admin.users.index')
-            ->with('success', 'Data pengguna berhasil diperbarui.');
+            ->with('success', 'Akun berhasil diperbarui.');
     }
 }
