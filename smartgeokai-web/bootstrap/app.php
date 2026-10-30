@@ -16,7 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'superadmin' => \App\Http\Middleware\SuperAdminOnly::class,
             'admin'      => \App\Http\Middleware\AdminOnly::class, // Jika ingin memakai middleware AdminOnly baru
-            // 'admin'   => \App\Http\Middleware\EnsureUserIsAdmin::class, // (Gunakan ini jika masih menggunakan class lama)
+            'adminrole'  => \App\Http\Middleware\AdminRoleOnly::class,
             'guest'      => \App\Http\Middleware\RedirectIfAuthenticated::class,
         ]);
 

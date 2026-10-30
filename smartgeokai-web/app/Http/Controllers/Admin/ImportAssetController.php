@@ -92,6 +92,9 @@ class ImportAssetController extends Controller
         $header = fgetcsv($handle, 2000, ',');
         if (!$header) {
             fclose($handle);
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'File CSV kosong atau format tidak valid.'], 422);
+            }
             return back()->with('error', 'File CSV kosong atau format tidak valid.');
         }
 
@@ -222,18 +225,26 @@ class ImportAssetController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             fclose($handle);
-            return back()->with('error', 'Terjadi kesalahan sistem saat mengimpor data: ' . $e->getMessage());
+            $msg = 'Terjadi kesalahan sistem saat mengimpor data: ' . $e->getMessage();
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $msg], 500);
+            }
+            return back()->with('error', $msg);
         }
 
         fclose($handle);
 
-        return back()->with([
-            'import_summary' => [
-                'success_count'   => $successCount,
-                'failure_count'   => count($failures),
-                'failures'        => $failures,
-                'imported_assets' => $importedAssets, // Dikirim ke session
-            ],
-        ]);
+        $summary = [
+            'success_count'   => $successCount,
+            'failure_count'   => count($failures),
+            'failures'        => $failures,
+            'imported_assets' => $importedAssets,
+        ];
+
+        if ($request->expectsJson()) {
+            return response()->json($summary);
+        }
+
+        return back()->with(['import_summary' => $summary]);
     }
 }

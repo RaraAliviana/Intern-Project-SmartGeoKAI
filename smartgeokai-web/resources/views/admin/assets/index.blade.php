@@ -1,4 +1,3 @@
-
 @extends('layouts.app')
 
 @section('title', 'Daftar Aset')
@@ -16,7 +15,8 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-2">
-            {{-- Tombol sampah khusus Super Admin --}}
+
+            {{-- Tombol Sampah khusus Super Admin --}}
             @if(auth()->check() && auth()->user()->role === 'superadmin')
                 <a href="{{ route('admin.trash.index') }}"
                    class="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-700 transition hover:bg-red-100">
@@ -25,6 +25,17 @@
                 </a>
             @endif
 
+            {{-- Tombol Import khusus Admin --}}
+            @if(auth()->check() && auth()->user()->role === 'admin')
+                <button type="button"
+                        @click="$dispatch('open-import')"
+                        class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50">
+                    <i class="fa-solid fa-file-import text-brand-500"></i>
+                    Import Data
+                </button>
+            @endif
+
+            {{-- Tambah Aset --}}
             <a href="{{ route('admin.assets.create') }}"
                class="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600">
                 <i class="fa-solid fa-plus"></i>
@@ -159,7 +170,7 @@
                            class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm">
                 </div>
 
-                {{-- Tombol filter --}}
+                {{-- Tombol Filter --}}
                 <div class="flex items-end gap-2">
                     <button type="submit"
                             class="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600">
@@ -177,7 +188,7 @@
         </form>
     </div>
 
-    {{-- Tabel aset --}}
+    {{-- Tabel Aset --}}
     <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-xs">
 
         <div class="flex flex-col gap-2 border-b border-gray-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
@@ -283,7 +294,7 @@
                                         <i class="fa-solid fa-pen-to-square"></i>
                                     </a>
 
-                                    {{-- Hapus / soft delete --}}
+                                    {{-- Hapus / Soft Delete --}}
                                     <form action="{{ route('admin.assets.destroy', $asset) }}"
                                           method="POST"
                                           onsubmit="return confirm('Yakin ingin menghapus aset ini?')">
@@ -324,9 +335,309 @@
         @endif
     </div>
 </div>
+
+{{-- Modal Import CSV khusus Admin --}}
+@if(auth()->check() && auth()->user()->role === 'admin')
+<div x-data="importModal()"
+     @open-import.window="openModal()"
+     x-cloak>
+
+    <div x-show="open"
+         x-transition.opacity
+         class="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/50 p-4">
+
+        <div @click.outside="!loading && !result && close()"
+             class="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white shadow-theme-lg">
+
+            {{-- Header Modal --}}
+            <div class="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+                <h3 class="text-base font-semibold text-gray-800">
+                    Import Data Aset
+                </h3>
+
+                <button type="button"
+                        @click="close()"
+                        :disabled="loading"
+                        class="text-gray-400 hover:text-gray-600 disabled:opacity-50">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            {{-- STATE 1: Form Upload --}}
+            <div x-show="!result" class="space-y-4 p-6">
+
+                <div @dragover.prevent="drag = true"
+                     @dragleave.prevent="drag = false"
+                     @drop.prevent="onDrop($event)"
+                     @click="$refs.file.click()"
+                     :class="drag ? 'border-brand-500 bg-brand-50' : 'border-gray-300 bg-gray-50'"
+                     class="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-4 py-10 text-center transition">
+
+                    <i class="fa-solid fa-cloud-arrow-up mb-3 text-3xl text-brand-500"></i>
+
+                    <template x-if="!file">
+                        <div>
+                            <p class="text-sm font-medium text-gray-700">
+                                Tarik file CSV ke sini
+                            </p>
+                            <p class="mt-1 text-xs text-gray-400">
+                                atau klik untuk memilih file (maks. 5 MB)
+                            </p>
+                        </div>
+                    </template>
+
+                    <template x-if="file">
+                        <div>
+                            <p class="text-sm font-semibold text-gray-800" x-text="file.name"></p>
+                            <p class="mt-1 text-xs text-gray-400"
+                               x-text="(file.size / 1024).toFixed(1) + ' KB'"></p>
+                        </div>
+                    </template>
+
+                    <input type="file"
+                           x-ref="file"
+                           accept=".csv,text/csv"
+                           class="hidden"
+                           @change="setFile($event.target.files[0])">
+                </div>
+
+                <p x-show="error"
+                   x-text="error"
+                   class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                </p>
+
+                <a href="{{ route('admin.import.template') }}"
+                   class="inline-flex items-center gap-2 text-xs font-medium text-brand-500 hover:text-brand-600">
+                    <i class="fa-solid fa-download"></i>
+                    Unduh template CSV
+                </a>
+
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button"
+                            @click="close()"
+                            :disabled="loading"
+                            class="rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+                        Batal
+                    </button>
+
+                    <button type="button"
+                            @click="submit()"
+                            :disabled="!file || loading"
+                            class="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50">
+                        <i class="fa-solid"
+                           :class="loading ? 'fa-spinner fa-spin' : 'fa-file-import'"></i>
+                        <span x-text="loading ? 'Memproses...' : 'Mulai Import'"></span>
+                    </button>
+                </div>
+            </div>
+
+            {{-- STATE 2: Hasil Import --}}
+            <div x-show="result" class="space-y-4 p-6">
+
+                {{-- Berhasil --}}
+                <div x-show="result && result.success_count > 0"
+                     class="flex items-start gap-3 rounded-xl border border-green-200 bg-green-50 p-4">
+                    <i class="fa-solid fa-circle-check mt-0.5 text-lg text-green-600"></i>
+
+                    <div>
+                        <p class="text-sm font-semibold text-green-800">
+                            Import berhasil
+                        </p>
+                        <p class="text-sm text-green-700">
+                            Berhasil menambahkan
+                            <b x-text="result?.success_count"></b>
+                            data aset.
+                        </p>
+                    </div>
+                </div>
+
+                {{-- Tidak Ada yang Berhasil --}}
+                <div x-show="result && result.success_count === 0"
+                     class="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4">
+                    <i class="fa-solid fa-circle-xmark mt-0.5 text-lg text-red-600"></i>
+                    <p class="text-sm font-semibold text-red-800">
+                        Tidak ada data yang berhasil ditambahkan.
+                    </p>
+                </div>
+
+                {{-- Daftar Data Gagal --}}
+                <div x-show="result && result.failure_count > 0"
+                     class="overflow-hidden rounded-xl border border-red-200">
+
+                    <div class="bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-800">
+                        <i class="fa-solid fa-triangle-exclamation mr-1.5"></i>
+                        <span x-text="result?.failure_count"></span>
+                        data gagal diimpor
+                    </div>
+
+                    <ul class="max-h-64 divide-y divide-gray-100 overflow-y-auto text-sm">
+                        <template x-for="f in (result?.failures ?? [])"
+                                  :key="f.row">
+                            <li class="px-4 py-2.5">
+                                <p class="text-gray-800">
+                                    Aset
+                                    <span class="font-mono font-semibold"
+                                          x-text="f.id_asset"></span>
+
+                                    <span class="text-xs text-gray-400">
+                                        (baris <span x-text="f.row"></span>)
+                                    </span>
+
+                                    tidak berhasil ditambahkan
+                                </p>
+
+                                <p class="mt-0.5 text-xs text-red-600"
+                                   x-text="f.reasons"></p>
+                            </li>
+                        </template>
+                    </ul>
+                </div>
+
+                {{-- Tombol Hasil --}}
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button"
+                            @click="reset()"
+                            class="rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                        Import lagi
+                    </button>
+
+                    <button type="button"
+                            @click="finish()"
+                            class="rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-600">
+                        Selesai
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+
 @endsection
 
 @push('scripts')
+
+{{-- Script Modal Import --}}
+@if(auth()->check() && auth()->user()->role === 'admin')
+<script>
+function importModal() {
+    return {
+        open: false,
+        drag: false,
+        loading: false,
+        file: null,
+        error: '',
+        result: null,
+
+        openModal() {
+            this.reset();
+            this.open = true;
+        },
+
+        close() {
+            if (!this.loading) {
+                this.open = false;
+            }
+        },
+
+        reset() {
+            this.file = null;
+            this.error = '';
+            this.result = null;
+            this.drag = false;
+
+            if (this.$refs.file) {
+                this.$refs.file.value = '';
+            }
+        },
+
+        finish() {
+            const added = this.result && this.result.success_count > 0;
+
+            this.open = false;
+
+            if (added) {
+                window.location.reload();
+            }
+        },
+
+        onDrop(e) {
+            this.drag = false;
+            this.setFile(e.dataTransfer.files[0]);
+        },
+
+        setFile(f) {
+            this.error = '';
+
+            if (!f) return;
+
+            if (!/\.csv$/i.test(f.name)) {
+                this.file = null;
+                this.error = 'File harus berformat .csv';
+                return;
+            }
+
+            if (f.size > 5 * 1024 * 1024) {
+                this.file = null;
+                this.error = 'Ukuran file maksimal 5 MB.';
+                return;
+            }
+
+            this.file = f;
+        },
+
+        async submit() {
+            if (!this.file || this.loading) return;
+
+            this.loading = true;
+            this.error = '';
+
+            const fd = new FormData();
+            fd.append('csv_file', this.file);
+
+            try {
+                const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+
+                if (!csrfMeta) {
+                    throw new Error('Token CSRF tidak ditemukan.');
+                }
+
+                const res = await fetch(@json(route('admin.import.store')), {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': csrfMeta.content,
+                        'Accept': 'application/json',
+                    },
+                    body: fd,
+                });
+
+                const data = await res.json().catch(() => ({}));
+
+                if (!res.ok) {
+                    this.error =
+                        data.errors?.csv_file?.[0] ||
+                        data.message ||
+                        'Import gagal diproses.';
+
+                    return;
+                }
+
+                this.result = data;
+
+            } catch (e) {
+                console.error(e);
+                this.error = e.message || 'Tidak dapat terhubung ke server.';
+
+            } finally {
+                this.loading = false;
+            }
+        },
+    };
+}
+</script>
+@endif
+
+{{-- Script Dropdown Wilayah --}}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const provinceSelect = document.getElementById('province_id');
@@ -352,7 +663,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
         try {
             const response = await fetch(
-                `${regenciesUrl}?province_id=${encodeURIComponent(provinceId)}`
+                `${regenciesUrl}?province_id=${encodeURIComponent(provinceId)}`,
+                {
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                }
             );
 
             if (!response.ok) {
@@ -367,6 +683,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 option.textContent = regency.name;
                 regencySelect.appendChild(option);
             });
+
         } catch (error) {
             console.error(error);
         }
@@ -383,7 +700,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
         try {
             const response = await fetch(
-                `${districtsUrl}?regency_id=${encodeURIComponent(regencyId)}`
+                `${districtsUrl}?regency_id=${encodeURIComponent(regencyId)}`,
+                {
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                }
             );
 
             if (!response.ok) {
@@ -398,6 +720,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 option.textContent = district.name;
                 districtSelect.appendChild(option);
             });
+
         } catch (error) {
             console.error(error);
         }
