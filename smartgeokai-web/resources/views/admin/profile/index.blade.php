@@ -4,6 +4,15 @@
 
 @section('content')
 
+    @php
+        $userName = $user->full_name ?? 'Admin';
+        $initials = collect(preg_split('/\s+/', trim($userName)))
+            ->filter()
+            ->take(2)
+            ->map(fn ($word) => mb_strtoupper(mb_substr($word, 0, 1)))
+            ->implode('');
+    @endphp
+
     <div class="mb-6">
         <h1 class="text-2xl font-bold text-gray-800">Profil Saya</h1>
         <p class="text-sm text-gray-500">Kelola informasi akun dan keamanan kamu.</p>
@@ -14,13 +23,22 @@
         {{-- Ringkasan akun --}}
         <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-xs lg:col-span-1">
             <div class="flex flex-col items-center text-center">
-                <img
-                    src="{{ asset('images/icon/avatar-01.jpg') }}"
-                    alt="Avatar"
-                    class="h-24 w-24 rounded-full object-cover ring-4 ring-brand-50"
-                >
-                <h2 class="mt-4 text-base font-bold text-gray-800">{{ $user->full_name }}</h2>
-                <p class="text-sm text-gray-500">{{ $user->role === 'admin' ? 'Administrator' : 'Petugas' }}</p>
+                
+                {{-- Avatar (Foto jika ada, Inisial jika tidak) --}}
+                @if (!empty($user->avatar))
+                    <img
+                        src="{{ asset('storage/' . $user->avatar) }}"
+                        alt="{{ $userName }}"
+                        class="h-24 w-24 rounded-full object-cover ring-4 ring-brand-50"
+                    >
+                @else
+                    <span class="flex h-24 w-24 items-center justify-center rounded-full bg-brand-500 text-2xl font-bold text-white ring-4 ring-brand-50">
+                        {{ $initials }}
+                    </span>
+                @endif
+
+                <h2 class="mt-4 text-base font-bold text-gray-800">{{ $userName }}</h2>
+                <p class="text-sm text-gray-500">{{ $user->role === 'admin' ? 'Administrator' : ($user->role === 'superadmin' ? 'Super Admin' : 'Petugas') }}</p>
 
                 <span class="mt-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium
                     {{ $user->is_active ? 'bg-success-50 text-success-600' : 'bg-error-50 text-error-600' }}">
@@ -120,6 +138,7 @@
                         <label class="mb-1.5 block text-sm font-medium text-gray-700">Password Lama</label>
                         <input
                             type="password"
+                            name="current_profile_password" {{-- atau current_password sesuai route kamu --}}
                             name="current_password"
                             class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-800 outline-none transition focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10"
                         >

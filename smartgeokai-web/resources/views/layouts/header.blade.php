@@ -66,6 +66,15 @@
             ============================================================= --}}
             <div class="relative" x-data="{ open: false }">
 
+                @php
+                    $userName = auth()->user()->full_name ?? 'Admin';
+                    $initials = collect(preg_split('/\s+/', trim($userName)))
+                        ->filter()
+                        ->take(2)
+                        ->map(fn ($word) => mb_strtoupper(mb_substr($word, 0, 1)))
+                        ->implode('');
+                @endphp
+
                 <button
                     type="button"
                     @click="open = !open"
@@ -73,19 +82,25 @@
                     class="flex items-center gap-3 rounded-lg py-1.5 pl-1.5 pr-2 transition hover:bg-gray-50"
                 >
 
-                    {{-- Avatar --}}
-                    <img
-                        src="{{ asset('images/icon/avatar-01.jpg') }}"
-                        alt="User"
-                        class="h-9 w-9 rounded-full object-cover"
-                    >
+                    {{-- Avatar (Foto jika ada, Inisial jika tidak) --}}
+                    @if (!empty(auth()->user()->avatar))
+                        <img
+                            src="{{ asset('storage/' . auth()->user()->avatar) }}"
+                            alt="{{ $userName }}"
+                            class="h-9 w-9 rounded-full object-cover"
+                        >
+                    @else
+                        <span class="flex h-9 w-9 items-center justify-center rounded-full bg-brand-500 text-sm font-semibold text-white">
+                            {{ $initials }}
+                        </span>
+                    @endif
 
                     {{-- User information --}}
                     <span class="hidden text-left sm:block">
 
                         {{-- Nama pengguna --}}
                         <span class="block text-sm font-medium leading-tight text-gray-700">
-                            {{ auth()->user()->full_name ?? 'Admin' }}
+                            {{ $userName }}
                         </span>
 
                         {{-- Role pengguna --}}
