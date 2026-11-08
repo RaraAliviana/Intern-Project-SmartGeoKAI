@@ -12,6 +12,13 @@ class Asset extends Model
 
     protected $table = 'assets';
 
+    /*
+    | ID aset baru berformat NN.NN.NNNNN (11 karakter), contoh 06.01.00001.
+    | Luas maksimal sesuai DECIMAL(11,2).
+    */
+    public const ID_ASSET_REGEX = '/^\d{2}\.\d{2}\.\d{5}\z/';
+    public const AREA_MAX       = 999999999.99;
+
     protected $fillable = [
         'id_asset',
         'asset_type',
@@ -33,8 +40,8 @@ class Asset extends Model
 
     protected $casts = [
         'area_m2' => 'decimal:2',
-        'latitude' => 'decimal:8',
-        'longitude' => 'decimal:8',
+        'latitude' => 'decimal:6',
+        'longitude' => 'decimal:6',
         'status_updated_at' => 'datetime',
     ];
 

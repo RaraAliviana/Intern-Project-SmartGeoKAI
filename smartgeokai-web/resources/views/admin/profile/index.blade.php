@@ -54,8 +54,8 @@
                         <dd class="text-sm font-medium text-gray-700">{{ $user->username }}</dd>
                     </div>
                     <div class="flex items-center justify-between">
-                        <dt class="text-xs text-gray-400">NIP</dt>
-                        <dd class="text-sm font-medium text-gray-700">{{ $user->nip }}</dd>
+                        <dt class="text-xs text-gray-400">NIPP</dt>
+                        <dd class="text-sm font-medium text-gray-700">{{ $user->nipp }}</dd>
                     </div>
                     @if ($user->province)
                         <div class="flex items-center justify-between">
@@ -73,7 +73,7 @@
             <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-xs">
                 <div class="mb-5 border-b border-gray-100 pb-4">
                     <h2 class="text-base font-semibold text-gray-800">Informasi Akun</h2>
-                    <p class="mt-1 text-sm text-gray-500">Perbarui nama lengkap dan NIP kamu.</p>
+                    <p class="mt-1 text-sm text-gray-500">Perbarui nama lengkap dan NIPP kamu.</p>
                 </div>
 
                 <form method="POST" action="{{ route('admin.profile.update') }}" class="space-y-5">
@@ -86,6 +86,7 @@
                             type="text"
                             name="full_name"
                             value="{{ old('full_name', $user->full_name) }}"
+                            maxlength="{{ \App\Models\User::FULL_NAME_MAX }}"
                             class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-800 outline-none transition focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10"
                         >
                         @error('full_name')
@@ -105,14 +106,16 @@
                     </div>
 
                     <div>
-                        <label class="mb-1.5 block text-sm font-medium text-gray-700">NIP</label>
+                        <label class="mb-1.5 block text-sm font-medium text-gray-700">NIPP</label>
                         <input
                             type="text"
-                            name="nip"
-                            value="{{ old('nip', $user->nip) }}"
+                            name="nipp"
+                            value="{{ old('nipp', $user->nipp) }}"
+                            inputmode="numeric"
+                            maxlength="{{ \App\Models\User::NIPP_MAX }}"
                             class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-800 outline-none transition focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10"
                         >
-                        @error('nip')
+                        @error('nipp')
                             <p class="mt-1 text-xs text-error-600">{{ $message }}</p>
                         @enderror
                     </div>
@@ -138,7 +141,6 @@
                         <label class="mb-1.5 block text-sm font-medium text-gray-700">Password Lama</label>
                         <input
                             type="password"
-                            name="current_profile_password" {{-- atau current_password sesuai route kamu --}}
                             name="current_password"
                             class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-800 outline-none transition focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10"
                         >

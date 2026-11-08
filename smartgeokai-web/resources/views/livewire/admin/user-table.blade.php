@@ -21,7 +21,7 @@
             <input
                 type="text"
                 wire:model.live.debounce.300ms="search"
-                placeholder="Cari nama, username, atau NIP..."
+                placeholder="Cari nama, username, atau NIPP..."
                 class="h-11 w-full rounded-lg border border-gray-300 bg-white pl-11 pr-9 text-sm text-gray-700 placeholder:text-gray-400 outline-none transition focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10"
             >
 
@@ -70,7 +70,7 @@
                     <tr class="border-b border-gray-100 bg-gray-50">
                         <th class="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Nama</th>
                         <th class="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Username</th>
-                        <th class="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">NIP</th>
+                        <th class="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">NIPP</th>
                         <th class="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Role</th>
                         <th class="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Wilayah Kerja</th>
                         <th class="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Status</th>
@@ -118,9 +118,9 @@
                                 {{ $user->username }}
                             </td>
 
-                            {{-- NIP --}}
+                            {{-- NIPP --}}
                             <td class="whitespace-nowrap px-5 py-4 text-sm text-gray-600">
-                                {{ $user->nip }}
+                                {{ $user->nipp }}
                             </td>
 
                             {{-- Role --}}
@@ -149,34 +149,45 @@
                             {{-- Aksi --}}
                             <td class="whitespace-nowrap px-5 py-4">
                                 <div class="flex items-center gap-2">
-                                    <a
-                                        href="{{ route('admin.users.edit', $user->id) }}"
-                                        class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50"
-                                        title="Edit pengguna"
-                                    >
-                                        <i class="fa-solid fa-pen-to-square"></i>
-                                    </a>
-
-                                    @if ($user->id !== auth()->id())
-                                        <button
-                                            type="button"
-                                            wire:click="toggleStatus({{ $user->id }})"
-                                            wire:confirm="Yakin ingin mengubah status akun ini?"
-                                            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition hover:border-warning-300 hover:text-warning-500"
-                                            title="Aktifkan/Nonaktifkan"
+                                    @if ($user->canBeManagedBy(auth()->user()))
+                                        <a
+                                            href="{{ route('admin.users.edit', $user->id) }}"
+                                            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50"
+                                            title="Edit pengguna"
                                         >
-                                            <i class="fa-solid fa-power-off text-xs"></i>
-                                        </button>
+                                            <i class="fa-solid fa-pen-to-square"></i>
+                                        </a>
 
-                                        <button
-                                            type="button"
-                                            wire:click="deleteUser({{ $user->id }})"
-                                            wire:confirm="Yakin ingin menghapus akun ini?"
-                                            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition hover:border-error-300 hover:text-error-500"
-                                            title="Hapus"
+                                        @if ($user->id !== auth()->id())
+                                            <button
+                                                type="button"
+                                                wire:click="toggleStatus({{ $user->id }})"
+                                                wire:confirm="Yakin ingin mengubah status akun ini?"
+                                                class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition hover:border-warning-300 hover:text-warning-500"
+                                                title="Aktifkan/Nonaktifkan"
+                                            >
+                                                <i class="fa-solid fa-power-off text-xs"></i>
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                wire:click="deleteUser({{ $user->id }})"
+                                                wire:confirm="Yakin ingin menghapus akun ini?"
+                                                class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition hover:border-error-300 hover:text-error-500"
+                                                title="Hapus"
+                                            >
+                                                <i class="fa-solid fa-trash text-xs"></i>
+                                            </button>
+                                        @endif
+                                    @else
+                                        {{-- Akun Super Admin dilindungi dari Admin --}}
+                                        <span
+                                            class="inline-flex items-center gap-1.5 text-xs text-gray-400"
+                                            title="Hanya Super Admin yang dapat mengelola akun ini"
                                         >
-                                            <i class="fa-solid fa-trash text-xs"></i>
-                                        </button>
+                                            <i class="fa-solid fa-lock"></i>
+                                            Dilindungi
+                                        </span>
                                     @endif
                                 </div>
                             </td>

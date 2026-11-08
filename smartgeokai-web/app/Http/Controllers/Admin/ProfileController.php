@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -23,17 +24,20 @@ class ProfileController extends Controller
         $user = Auth::user();
 
         $validated = $request->validate([
-            'full_name' => ['required', 'string', 'max:100'],
-            'nip' => [
+            'full_name' => ['required', 'string', 'max:' . User::FULL_NAME_MAX],
+            'nipp' => [
+                'bail',
                 'required',
                 'string',
-                'max:20',
-                Rule::unique('users', 'nip')->ignore($user->id),
+                'digits_between:1,' . User::NIPP_MAX,
+                Rule::unique('users', 'nipp')->ignore($user->id),
             ],
         ], [
             'full_name.required' => 'Nama lengkap wajib diisi.',
-            'nip.required' => 'NIP wajib diisi.',
-            'nip.unique' => 'NIP ini sudah digunakan oleh pengguna lain.',
+            'full_name.max' => 'Nama lengkap maksimal ' . User::FULL_NAME_MAX . ' karakter.',
+            'nipp.required' => 'NIPP wajib diisi.',
+            'nipp.digits_between' => 'NIPP harus berupa angka (maksimal ' . User::NIPP_MAX . ' digit).',
+            'nipp.unique' => 'NIPP ini sudah digunakan oleh pengguna lain.',
         ]);
 
         $user->update($validated);

@@ -22,6 +22,25 @@ class UserController extends Controller
             : ['petugas'];
     }
 
+    /**
+     * Pesan validasi (dipakai store dan update).
+     */
+    private function messages(): array
+    {
+        return [
+            'full_name.max' => 'Nama lengkap maksimal ' . User::FULL_NAME_MAX . ' karakter.',
+            'username.max' => 'Username maksimal ' . User::USERNAME_MAX . ' karakter.',
+            'username.unique' => 'Username sudah digunakan.',
+            'nipp.required' => 'NIPP wajib diisi.',
+            'nipp.digits_between' => 'NIPP harus berupa angka (maksimal ' . User::NIPP_MAX . ' digit).',
+            'nipp.unique' => 'NIPP sudah terdaftar.',
+            'role.in' => 'Role yang dipilih tidak diizinkan.',
+            'password.confirmed' => 'Konfirmasi password tidak cocok.',
+            'province_id.required_if' => 'Wilayah kerja wajib dipilih untuk petugas.',
+            'province_id.exists' => 'Provinsi yang dipilih tidak valid.',
+        ];
+    }
+
     public function index()
     {
         return view('admin.users.index');
@@ -44,24 +63,18 @@ class UserController extends Controller
         $allowedRoles = $this->allowedRoles();
 
         $validated = $request->validate([
-            'full_name'   => ['required', 'string', 'max:100'],
-            'username'    => ['required', 'string', 'max:50', 'unique:users,username'],
-            'nip'         => ['required', 'string', 'max:20', 'unique:users,nip'],
+            'full_name'   => ['required', 'string', 'max:' . User::FULL_NAME_MAX],
+            'username'    => ['required', 'string', 'max:' . User::USERNAME_MAX, 'unique:users,username'],
+            'nipp'        => ['bail', 'required', 'string', 'digits_between:1,' . User::NIPP_MAX, 'unique:users,nipp'],
             'password'    => ['required', 'string', 'min:8', 'confirmed'],
             'role'        => ['required', Rule::in($allowedRoles)],
-            'province_id' => ['nullable', 'exists:provinces,id'],
+            'province_id' => ['nullable', 'required_if:role,petugas', 'integer', 'exists:provinces,id'],
             'is_active'   => ['boolean'],
-        ], [
-            'username.unique' => 'Username sudah digunakan.',
-            'nip.unique' => 'NIP sudah terdaftar.',
-            'role.in' => 'Role yang dipilih tidak diizinkan.',
-            'password.confirmed' => 'Konfirmasi password tidak cocok.',
-            'province_id.exists' => 'Provinsi yang dipilih tidak valid.',
-        ]);
+        ], $this->messages());
 
         $validated['password'] = Hash::make($validated['password']);
         $validated['is_active'] = $request->boolean('is_active', true);
-        
+
         // Admin tidak perlu batasan wilayah
         $validated['province_id'] = $validated['role'] === 'admin'
             ? null
@@ -106,30 +119,25 @@ class UserController extends Controller
         $allowedRoles = $this->allowedRoles();
 
         $validated = $request->validate([
-            'full_name'   => ['required', 'string', 'max:100'],
+            'full_name'   => ['required', 'string', 'max:' . User::FULL_NAME_MAX],
             'username'    => [
                 'required',
                 'string',
-                'max:50',
+                'max:' . User::USERNAME_MAX,
                 Rule::unique('users', 'username')->ignore($user->id),
             ],
-            'nip'         => [
+            'nipp'        => [
+                'bail',
                 'required',
                 'string',
-                'max:20',
-                Rule::unique('users', 'nip')->ignore($user->id),
+                'digits_between:1,' . User::NIPP_MAX,
+                Rule::unique('users', 'nipp')->ignore($user->id),
             ],
             'role'        => ['required', Rule::in($allowedRoles)],
-            'province_id' => ['nullable', 'exists:provinces,id'],
+            'province_id' => ['nullable', 'required_if:role,petugas', 'integer', 'exists:provinces,id'],
             'password'    => ['nullable', 'string', 'min:8', 'confirmed'],
             'is_active'   => ['boolean'],
-        ], [
-            'username.unique' => 'Username sudah digunakan.',
-            'nip.unique' => 'NIP sudah terdaftar.',
-            'role.in' => 'Role yang dipilih tidak diizinkan.',
-            'password.confirmed' => 'Konfirmasi password tidak cocok.',
-            'province_id.exists' => 'Provinsi yang dipilih tidak valid.',
-        ]);
+        ], $this->messages());
 
         // Akun sendiri tidak boleh berganti role.
         if (

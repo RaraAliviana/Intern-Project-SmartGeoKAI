@@ -11,10 +11,14 @@ class User extends Authenticatable
 {
     use HasFactory, Notifiable, HasApiTokens;
 
+    public const FULL_NAME_MAX = 60;
+    public const USERNAME_MAX  = 30;
+    public const NIPP_MAX      = 10;
+
     protected $fillable = [
         'full_name',
         'username',
-        'nip',
+        'nipp',
         'password',
         'role',
         'is_active',
@@ -49,6 +53,19 @@ class User extends Authenticatable
     public function isSuperAdmin(): bool
     {
         return $this->role === 'superadmin';
+    }
+
+    /**
+     * Apakah akun ini boleh diubah/dinonaktifkan/dihapus oleh $actor?
+     * Akun Super Admin hanya boleh dikelola oleh Super Admin.
+     */
+    public function canBeManagedBy(?self $actor): bool
+    {
+        if (! $actor) {
+            return false;
+        }
+
+        return $this->role !== 'superadmin' || $actor->isSuperAdmin();
     }
 
     /**

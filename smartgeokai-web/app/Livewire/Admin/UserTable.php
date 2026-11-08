@@ -3,6 +3,7 @@
 namespace App\Livewire\Admin;
 
 use App\Models\User;
+use App\Support\Search;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -35,6 +36,12 @@ class UserTable extends Component
             return;
         }
 
+        // Admin tidak boleh menonaktifkan/mengaktifkan akun Super Admin.
+        if (! $user->canBeManagedBy(Auth::user())) {
+            session()->flash('error', 'Hanya Super Admin yang dapat mengubah status akun Super Admin.');
+            return;
+        }
+
         $user->update(['is_active' => ! $user->is_active]);
         session()->flash('success', $user->is_active ? 'Akun diaktifkan.' : 'Akun dinonaktifkan.');
     }
@@ -43,6 +50,12 @@ class UserTable extends Component
     {
         if ($user->id === Auth::id()) {
             session()->flash('error', 'Tidak dapat menghapus akun sendiri.');
+            return;
+        }
+
+        // Admin tidak boleh menghapus akun Super Admin.
+        if (! $user->canBeManagedBy(Auth::user())) {
+            session()->flash('error', 'Hanya Super Admin yang dapat menghapus akun Super Admin.');
             return;
         }
 
@@ -59,10 +72,14 @@ class UserTable extends Component
             ->when($search !== '', function ($query) use ($search) {
                 $escaped = str_replace(['%', '_'], ['\%', '\_'], $search);
 
-                $query->where(function ($q) use ($escaped) {
+                $query->where(function ($q) use ($escaped, $search) {
                     $q->where('full_name', 'like', '%' . $escaped . '%')
-                        ->orWhere('username', 'like', '%' . $escaped . '%')
-                        ->orWhere('nip', 'like', '%' . $escaped . '%');
+                        ->orWhere('username', 'like', '%' . $escaped . '%');
+
+                    // nipp bercharset ascii: hanya dicari bila kata kunci ASCII
+                    if (Search::isAscii($search)) {
+                        $q->orWhere('nipp', 'like', '%' . $escaped . '%');
+                    }
                 });
             })
             ->when($this->roleFilter !== '', function ($query) {

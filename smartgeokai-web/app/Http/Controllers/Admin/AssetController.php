@@ -7,11 +7,28 @@ use App\Models\Asset;
 use App\Models\Province;
 use App\Models\Regency;
 use App\Models\District;
+use App\Support\Search;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class AssetController extends Controller
 {
+    /**
+     * Pesan validasi (dipakai store dan update).
+     */
+    private function messages(): array
+    {
+        return [
+            'id_asset.max'      => 'ID aset maksimal 11 karakter.',
+            'id_asset.regex'    => 'Format ID aset harus NN.NN.NNNNN, contoh: 06.01.00001.',
+            'id_asset.unique'   => 'ID aset sudah digunakan.',
+            'area_m2.max'       => 'Luas maksimal 999.999.999,99 m².',
+            'gmaps_url.max'     => 'Link Google Maps maksimal 255 karakter.',
+            'description.max'   => 'Deskripsi maksimal 5.000 karakter.',
+        ];
+    }
+
     /*
     |--------------------------------------------------------------------------
     | PETA ASET
@@ -92,8 +109,12 @@ class AssetController extends Controller
             ->when($request->filled('search'), function ($query) use ($request) {
                 $search = $request->search;
                 $query->where(function ($q) use ($search) {
-                    $q->where('id_asset', 'like', '%' . $search . '%')
-                      ->orWhere('description', 'like', '%' . $search . '%');
+                    $q->where('description', 'like', '%' . $search . '%');
+
+                    // id_asset bercharset ascii: hanya dicari bila kata kunci ASCII
+                    if (Search::isAscii($search)) {
+                        $q->orWhere('id_asset', 'like', '%' . $search . '%');
+                    }
                 });
             })
             ->latest()
@@ -138,22 +159,26 @@ class AssetController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'id_asset'       => ['required', 'string', 'max:20', 'unique:assets,id_asset'],
-            'province_id'    => ['required', 'exists:provinces,id'],
-            'regency_id'     => ['required', 'exists:regencies,id'],
-            'district_id'    => ['required', 'exists:districts,id'],
+            'id_asset'       => ['bail', 'required', 'string', 'max:11', 'regex:' . Asset::ID_ASSET_REGEX, 'unique:assets,id_asset'],
+            'province_id'    => ['required', 'integer', 'exists:provinces,id'],
+            'regency_id'     => ['required', 'integer', 'exists:regencies,id'],
+            'district_id'    => ['required', 'integer', 'exists:districts,id'],
             'asset_type'     => ['required', 'in:Tanah,Bangunan'],
             'classification' => ['required', 'in:ROW,Fasilitas,Operasional'],
             'asset_group'    => ['required', 'in:Produksi,Non Produksi'],
             'status'         => ['required', 'in:Clear,Proses,Masalah'],
-            'area_m2'        => ['required', 'numeric', 'min:0'],
+            'area_m2'        => ['required', 'numeric', 'min:0', 'max:' . Asset::AREA_MAX],
             'latitude'       => ['required', 'numeric', 'between:-90,90'],
             'longitude'      => ['required', 'numeric', 'between:-180,180'],
-            'gmaps_url'      => ['nullable', 'string', 'max:500'],
-            'description'    => ['nullable', 'string'],
+            'gmaps_url'      => ['nullable', 'string', 'max:255'],
+            'description'    => ['nullable', 'string', 'max:5000'],
             'photos'         => ['required', 'array', 'min:1'],
             'photos.*'       => ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
-        ]);
+        ], $this->messages());
+
+        // Database menyimpan koordinat 6 desimal (presisi sekitar 11 cm)
+        $validated['latitude']  = round((float) $validated['latitude'], 6);
+        $validated['longitude'] = round((float) $validated['longitude'], 6);
 
         $validated['created_by'] = auth()->id();
         $validated['status_updated_at'] = now();
@@ -167,7 +192,7 @@ class AssetController extends Controller
                 $path = $photo->store('assets/images', 'public');
                 $asset->images()->create([
                     'file_path'   => $path,
-                    'file_name'   => $photo->getClientOriginalName(),
+                    'file_name'   => Str::limit($photo->getClientOriginalName(), 255, ''),
                     'file_size'   => $photo->getSize(),
                     'uploaded_by' => auth()->id(),
                 ]);
@@ -194,25 +219,37 @@ class AssetController extends Controller
 
     public function update(Request $request, Asset $asset)
     {
+        // Aset lama berformat 10 karakter (34.01.0102) boleh tetap dipakai selama
+        // ID-nya tidak diubah; kalau diubah, harus mengikuti format baru NN.NN.NNNNN.
+        $idRules = ['bail', 'required', 'string', 'max:11'];
+        if ($request->input('id_asset') !== $asset->id_asset) {
+            $idRules[] = 'regex:' . Asset::ID_ASSET_REGEX;
+        }
+        $idRules[] = 'unique:assets,id_asset,' . $asset->id;
+
         $validated = $request->validate([
-            'id_asset'       => ['required', 'string', 'max:20', 'unique:assets,id_asset,' . $asset->id],
-            'province_id'    => ['required', 'exists:provinces,id'],
-            'regency_id'     => ['required', 'exists:regencies,id'],
-            'district_id'    => ['required', 'exists:districts,id'],
+            'id_asset'       => $idRules,
+            'province_id'    => ['required', 'integer', 'exists:provinces,id'],
+            'regency_id'     => ['required', 'integer', 'exists:regencies,id'],
+            'district_id'    => ['required', 'integer', 'exists:districts,id'],
             'asset_type'     => ['required', 'in:Tanah,Bangunan'],
             'classification' => ['required', 'in:ROW,Fasilitas,Operasional'],
             'asset_group'    => ['required', 'in:Produksi,Non Produksi'],
             'status'         => ['required', 'in:Clear,Proses,Masalah'],
-            'area_m2'        => ['required', 'numeric', 'min:0'],
+            'area_m2'        => ['required', 'numeric', 'min:0', 'max:' . Asset::AREA_MAX],
             'latitude'       => ['required', 'numeric', 'between:-90,90'],
             'longitude'      => ['required', 'numeric', 'between:-180,180'],
-            'gmaps_url'      => ['nullable', 'string', 'max:500'],
-            'description'    => ['nullable', 'string'],
+            'gmaps_url'      => ['nullable', 'string', 'max:255'],
+            'description'    => ['nullable', 'string', 'max:5000'],
             'delete_images'   => ['nullable', 'array'],
             'delete_images.*' => ['exists:asset_images,id'],
             'photos'         => ['nullable', 'array'],
             'photos.*'       => ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
-        ]);
+        ], $this->messages());
+
+        // Database menyimpan koordinat 6 desimal (presisi sekitar 11 cm)
+        $validated['latitude']  = round((float) $validated['latitude'], 6);
+        $validated['longitude'] = round((float) $validated['longitude'], 6);
 
         $validated['updated_by'] = auth()->id();
 
@@ -237,7 +274,7 @@ class AssetController extends Controller
                 $path = $photo->store('assets/images', 'public');
                 $asset->images()->create([
                     'file_path'   => $path,
-                    'file_name'   => $photo->getClientOriginalName(),
+                    'file_name'   => Str::limit($photo->getClientOriginalName(), 255, ''),
                     'file_size'   => $photo->getSize(),
                     'uploaded_by' => auth()->id(),
                 ]);
