@@ -52,17 +52,20 @@
 
             <div>
                 <label class="mb-1.5 block text-sm font-medium text-gray-700">
-                    NIP
+                    NIPP
                 </label>
                 <input
                     type="text"
-                    name="nip"
-                    value="{{ old('nip') }}"
+                    name="nipp"
+                    value="{{ old('nipp') }}"
                     required
-                    placeholder="NIP"
+                    inputmode="numeric"
+                    pattern="[0-9]*"
+                    maxlength="{{ \App\Models\User::NIPP_MAX }}"
+                    placeholder="NIPP (angka, maks. {{ \App\Models\User::NIPP_MAX }} digit)"
                     class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-800 outline-none transition focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10"
                 >
-                @error('nip')
+                @error('nipp')
                     <p class="mt-1 text-xs text-error-600">{{ $message }}</p>
                 @enderror
             </div>
