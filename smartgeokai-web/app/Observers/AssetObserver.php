@@ -8,14 +8,10 @@ use App\Models\User;
 use App\Notifications\AssetReportedProblem;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Str;
 
 class AssetObserver
 {
-    /**
-     * Menyimpan nilai sebelum aset diperbarui.
-     */
-    private array $originalValues = [];
-
     /**
      * Saat aset baru dibuat.
      */
@@ -31,7 +27,7 @@ class AssetObserver
             'old_value'  => null,
             'new_value'  => $this->toJson($this->getRelevantFields($asset)),
             'ip_address' => request()?->ip(),
-            'user_agent' => request()?->userAgent(),
+            'user_agent' => $this->userAgent(),
             'created_at' => now(),
         ]);
 
@@ -41,22 +37,15 @@ class AssetObserver
     }
 
     /**
-     * Simpan nilai lama sebelum proses update.
-     */
-    public function updating(Asset $asset): void
-    {
-        $this->originalValues[$asset->getKey()] = $asset->getOriginal();
-    }
-
-    /**
      * Saat aset berhasil diperbarui.
+     *
+     * Pada event "updated", Eloquent belum menyinkronkan nilai asli, jadi
+     * getOriginal() masih berisi nilai LAMA dan getChanges() berisi field yang
+     * berubah. Nilai lama TIDAK boleh disimpan di properti observer, karena
+     * Laravel membuat instance observer baru untuk setiap event.
      */
     public function updated(Asset $asset): void
     {
-        $key = $asset->getKey();
-        $oldValues = $this->originalValues[$key] ?? [];
-        unset($this->originalValues[$key]);
-
         $changes = $asset->getChanges();
 
         $skipFields = [
@@ -69,14 +58,16 @@ class AssetObserver
             ?? $asset->updated_by
             ?? $asset->created_by;
 
-        foreach ($changes as $field => $newValue) {
+        foreach (array_keys($changes) as $field) {
             if (in_array($field, $skipFields, true)) {
                 continue;
             }
 
-            $oldValue = $oldValues[$field] ?? null;
+            // Keduanya diambil lewat cast model, supaya format angka desimal seragam
+            $oldValue = $this->stringify($asset->getOriginal($field));
+            $newValue = $this->stringify($asset->getAttribute($field));
 
-            if ($oldValue == $newValue) {
+            if ($oldValue === $newValue) {
                 continue;
             }
 
@@ -85,14 +76,10 @@ class AssetObserver
                 'asset_id'   => $asset->id,
                 'action'     => 'update',
                 'field_name' => $field,
-                'old_value'  => $oldValue === null
-                    ? null
-                    : (string) $oldValue,
-                'new_value'  => $newValue === null
-                    ? null
-                    : (string) $newValue,
+                'old_value'  => $oldValue,
+                'new_value'  => $newValue,
                 'ip_address' => request()?->ip(),
-                'user_agent' => request()?->userAgent(),
+                'user_agent' => $this->userAgent(),
                 'created_at' => now(),
             ]);
         }
@@ -121,7 +108,7 @@ class AssetObserver
             'old_value'  => $this->toJson($this->getRelevantFields($asset)),
             'new_value'  => null,
             'ip_address' => request()?->ip(),
-            'user_agent' => request()?->userAgent(),
+            'user_agent' => $this->userAgent(),
             'created_at' => now(),
         ]);
     }
@@ -141,7 +128,7 @@ class AssetObserver
             'old_value'  => null,
             'new_value'  => 'Aset dipulihkan',
             'ip_address' => request()?->ip(),
-            'user_agent' => request()?->userAgent(),
+            'user_agent' => $this->userAgent(),
             'created_at' => now(),
         ]);
     }
@@ -165,6 +152,40 @@ class AssetObserver
             'longitude'      => $asset->longitude,
             'description'    => $asset->description,
         ];
+    }
+
+    /**
+     * Ubah nilai atribut menjadi teks untuk disimpan di log (null tetap null).
+     */
+    private function stringify(mixed $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if ($value instanceof \DateTimeInterface) {
+            return $value->format('Y-m-d H:i:s');
+        }
+
+        if (is_bool($value)) {
+            return $value ? '1' : '0';
+        }
+
+        if (is_array($value) || is_object($value)) {
+            return json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        }
+
+        return (string) $value;
+    }
+
+    /**
+     * Kolom audit_logs.user_agent hanya 255 karakter.
+     */
+    private function userAgent(): ?string
+    {
+        $agent = request()?->userAgent();
+
+        return $agent === null ? null : Str::limit($agent, 255, '');
     }
 
     private function toJson(array $data): string
