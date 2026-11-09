@@ -11,7 +11,9 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
-    // Login
+    /**
+     * Login khusus pengguna dengan role petugas.
+     */
     public function login(Request $request)
     {
         $credentials = $request->validate([
@@ -42,7 +44,7 @@ class AuthController extends Controller
             ]);
         }
 
-        // API mobile khusus petugas
+        // API mobile hanya dapat digunakan oleh petugas.
         if ($user->role !== 'petugas') {
             throw ValidationException::withMessages([
                 'username' => [
@@ -64,8 +66,9 @@ class AuthController extends Controller
                     'id' => $user->id,
                     'full_name' => $user->full_name,
                     'username' => $user->username,
-                    'nip' => $user->nip,
+                    'nipp' => $user->nipp,
                     'role' => $user->role,
+                    'is_active' => $user->is_active,
                     'province_id' => $user->province_id,
                     'province_name' => $user->province?->name,
                 ],
@@ -73,11 +76,14 @@ class AuthController extends Controller
         ]);
     }
 
-    // Logout
+    /**
+     * Logout dan menghapus token perangkat yang sedang digunakan.
+     */
     public function logout(Request $request)
     {
-        // Cabut token perangkat yang sedang digunakan
-        $request->user()->currentAccessToken()->delete();
+        $request->user()
+            ->currentAccessToken()
+            ->delete();
 
         return response()->json([
             'success' => true,
@@ -85,18 +91,21 @@ class AuthController extends Controller
         ]);
     }
 
-    // Informasi user yang sedang login
+    /**
+     * Mengambil informasi profil pengguna yang sedang login.
+     */
     public function me(Request $request)
     {
         $user = $request->user();
 
         return response()->json([
             'success' => true,
+            'message' => 'Data profil berhasil diambil.',
             'data' => [
                 'id' => $user->id,
                 'full_name' => $user->full_name,
                 'username' => $user->username,
-                'nip' => $user->nip,
+                'nipp' => $user->nipp,
                 'role' => $user->role,
                 'is_active' => $user->is_active,
                 'province_id' => $user->province_id,
@@ -105,7 +114,9 @@ class AuthController extends Controller
         ]);
     }
 
-    // Update profil
+    /**
+     * Memperbarui nama lengkap dan NIPP pengguna.
+     */
     public function updateProfile(Request $request)
     {
         $user = $request->user();
@@ -115,26 +126,52 @@ class AuthController extends Controller
                 'required',
                 'string',
                 'min:3',
-                'max:255',
+                'max:' . User::FULL_NAME_MAX,
             ],
-            'nip' => [
+
+            'nipp' => [
+                'bail',
                 'required',
                 'string',
-                'max:25',
-                Rule::unique('users', 'nip')->ignore($user->id),
+                'digits_between:1,' . User::NIPP_MAX,
+                Rule::unique('users', 'nipp')->ignore($user->id),
             ],
+        ], [
+            'full_name.required' => 'Nama lengkap wajib diisi.',
+            'full_name.min' => 'Nama lengkap minimal 3 karakter.',
+            'full_name.max' => 'Nama lengkap maksimal ' .
+                User::FULL_NAME_MAX . ' karakter.',
+
+            'nipp.required' => 'NIPP wajib diisi.',
+            'nipp.digits_between' => 'NIPP harus berupa angka dengan maksimal ' .
+                User::NIPP_MAX . ' digit.',
+            'nipp.unique' => 'NIPP sudah digunakan oleh pengguna lain.',
         ]);
 
         $user->update($data);
 
+        // Ambil ulang data terbaru dari database.
+        $updatedUser = $user->fresh();
+
         return response()->json([
             'success' => true,
             'message' => 'Profil berhasil diperbarui.',
-            'user' => $user->fresh(),
+            'user' => [
+                'id' => $updatedUser->id,
+                'full_name' => $updatedUser->full_name,
+                'username' => $updatedUser->username,
+                'nipp' => $updatedUser->nipp,
+                'role' => $updatedUser->role,
+                'is_active' => $updatedUser->is_active,
+                'province_id' => $updatedUser->province_id,
+                'province_name' => $updatedUser->province?->name,
+            ],
         ]);
     }
 
-    // Ganti password
+    /**
+     * Mengganti password pengguna.
+     */
     public function changePassword(Request $request)
     {
         $request->validate([
@@ -142,6 +179,7 @@ class AuthController extends Controller
                 'required',
                 'string',
             ],
+
             'password' => [
                 'required',
                 'string',

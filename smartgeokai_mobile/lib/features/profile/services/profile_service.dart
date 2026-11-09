@@ -1,31 +1,36 @@
+
 import 'package:dio/dio.dart';
+
 import '../../../core/constants/api_constants.dart';
 import '../../../core/network/api_client.dart';
 import '../../auth/models/user_model.dart';
 
 class ProfileResult {
-  final bool                success;
-  final String?             message;
-  final UserModel?          user;
+  final bool success;
+  final String? message;
+  final UserModel? user;
   final Map<String, String> fieldErrors;
-  final bool                unauthorized;
+  final bool unauthorized;
 
   const ProfileResult({
     required this.success,
     this.message,
     this.user,
-    this.fieldErrors  = const {},
+    this.fieldErrors = const {},
     this.unauthorized = false,
   });
 }
 
 class ProfileService {
-  // GET /profile
+  /// GET /profile
   Future<ProfileResult> fetchProfile() {
-    return _run(() => ApiClient.instance.get(ApiConstants.me));
+    return _run(
+      () => ApiClient.instance.get(ApiConstants.me),
+    );
   }
 
-  // PUT /profile  { full_name, nipp }
+  /// PUT /profile
+  /// Body: { full_name, nipp }
   Future<ProfileResult> updateProfile({
     required String fullName,
     required String nipp,
@@ -33,13 +38,16 @@ class ProfileService {
     return _run(
       () => ApiClient.instance.put(
         ApiConstants.me,
-        data: {'full_name': fullName, 'nipp': nipp},
+        data: {
+          'full_name': fullName,
+          'nipp': nipp,
+        },
       ),
       okMessage: 'Profil berhasil diperbarui.',
     );
   }
 
-  // PUT /profile/password
+  /// PUT /profile/password
   Future<ProfileResult> changePassword({
     required String currentPassword,
     required String newPassword,
@@ -49,8 +57,8 @@ class ProfileService {
       () => ApiClient.instance.put(
         ApiConstants.changePassword,
         data: {
-          'current_password':      currentPassword,
-          'password':              newPassword,
+          'current_password': currentPassword,
+          'password': newPassword,
           'password_confirmation': confirmPassword,
         },
       ),
@@ -63,16 +71,17 @@ class ProfileService {
     String? okMessage,
   }) async {
     try {
-      final res  = await call();
-      final body = res.data;
+      final response = await call();
+      final body = response.data;
+
       return ProfileResult(
         success: true,
         message: _readMessage(body) ?? okMessage,
-        user:    _parseUser(body),
+        user: _parseUser(body),
       );
     } on DioException catch (e) {
       final status = e.response?.statusCode;
-      final data   = e.response?.data;
+      final data = e.response?.data;
 
       if (status == 401) {
         return const ProfileResult(
@@ -83,41 +92,46 @@ class ProfileService {
       }
 
       if (status == 422) {
-        final errors = <String, String>{};
-        if (data is Map && data['errors'] is Map) {
-          (data['errors'] as Map).forEach((key, value) {
-            final text = value is List && value.isNotEmpty
-                ? value.first.toString()
-                : value.toString();
-            errors[key.toString()] = text;
-          });
-        }
         return ProfileResult(
           success: false,
-          message: _readMessage(data) ?? 'Data yang dikirim tidak valid.',
-          fieldErrors: errors,
+          message: _readMessage(data) ??
+              'Data yang dikirim tidak valid.',
+          fieldErrors: _readFieldErrors(data),
         );
       }
 
       if (status == 403) {
         return ProfileResult(
           success: false,
-          message: _readMessage(data) ?? 'Anda tidak memiliki akses.',
+          message: _readMessage(data) ??
+              'Anda tidak memiliki akses.',
         );
       }
 
-      if (status == null) {
+      if (status == 404) {
         return const ProfileResult(
           success: false,
-          message: 'Tidak dapat terhubung ke server. Periksa koneksi internet.',
+          message: 'Endpoint profil tidak ditemukan (404).',
+        );
+      }
+
+      if (status != null) {
+        return ProfileResult(
+          success: false,
+          message: _readMessage(data) ??
+              'Terjadi kesalahan pada server (HTTP $status).',
         );
       }
 
       return ProfileResult(
         success: false,
-        message: _readMessage(data) ?? 'Terjadi kesalahan ($status).',
+        message: 'Tidak dapat terhubung ke server. Periksa koneksi internet.',
       );
-    } catch (_) {
+    } catch (e, stackTrace) {
+      // Informasi ini membantu debugging saat pengembangan.
+      print('PROFILE SERVICE ERROR: $e');
+      print(stackTrace);
+
       return const ProfileResult(
         success: false,
         message: 'Terjadi kesalahan tak terduga.',
@@ -127,22 +141,56 @@ class ProfileService {
 
   String? _readMessage(dynamic body) {
     if (body is Map && body['message'] is String) {
-      return body['message'] as String;
+      return body['message'].toString();
     }
+
     return null;
   }
 
-  // Terima bentuk respons: {user:{...}}, {data:{...}}, atau langsung {...}
+  Map<String, String> _readFieldErrors(dynamic body) {
+    final errors = <String, String>{};
+
+    if (body is Map && body['errors'] is Map) {
+      (body['errors'] as Map).forEach((key, value) {
+        if (value is List && value.isNotEmpty) {
+          errors[key.toString()] = value.first.toString();
+        } else {
+          errors[key.toString()] = value.toString();
+        }
+      });
+    }
+
+    return errors;
+  }
+
   UserModel? _parseUser(dynamic body) {
     try {
-      if (body is Map) {
-        final raw = body['user'] ?? body['data'] ?? body;
-        if (raw is Map && raw['id'] != null) {
-          final user = UserModel.fromJson(Map<String, dynamic>.from(raw));
-          if (user.fullName.isNotEmpty) return user;
-        }
+      if (body is! Map) return null;
+
+      dynamic raw;
+
+      if (body['user'] is Map) {
+        raw = body['user'];
+      } else if (body['data'] is Map) {
+        raw = body['data'];
+      } else {
+        raw = body;
       }
-    } catch (_) {}
-    return null;
+
+      if (raw is! Map || raw['id'] == null) {
+        return null;
+      }
+
+      final user = UserModel.fromJson(
+        Map<String, dynamic>.from(raw),
+      );
+
+      if (user.id <= 0) return null;
+
+      return user;
+    } catch (e) {
+      print('PROFILE PARSE ERROR: $e');
+      return null;
+    }
   }
 }
