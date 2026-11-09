@@ -2,7 +2,7 @@ class UserModel {
   final int    id;
   final String fullName;
   final String username;
-  final String nip;
+  final String nipp;
   final String role;
   final bool   isActive;
 
@@ -10,7 +10,7 @@ class UserModel {
     required this.id,
     required this.fullName,
     required this.username,
-    required this.nip,
+    required this.nipp,
     required this.role,
     required this.isActive,
   });
@@ -21,7 +21,8 @@ class UserModel {
       id:       (json['id'] as num?)?.toInt() ?? 0,
       fullName: (json['full_name'] ?? json['name'] ?? '').toString(),
       username: (json['username'] ?? '').toString(),
-      nip:      (json['nip'] ?? '').toString(),
+      // Server mengirim 'nipp'; 'nip' tetap dibaca agar kompatibel dengan server lama
+      nipp:     (json['nipp'] ?? json['nip'] ?? '').toString(),
       role:     (json['role'] ?? 'petugas').toString(),
       isActive: active == null
           ? true
@@ -32,7 +33,7 @@ class UserModel {
   UserModel copyWith({
     String? fullName,
     String? username,
-    String? nip,
+    String? nipp,
     String? role,
     bool?   isActive,
   }) {
@@ -40,7 +41,7 @@ class UserModel {
       id:       id,
       fullName: fullName ?? this.fullName,
       username: username ?? this.username,
-      nip:      nip      ?? this.nip,
+      nipp:     nipp     ?? this.nipp,
       role:     role     ?? this.role,
       isActive: isActive ?? this.isActive,
     );
@@ -50,7 +51,7 @@ class UserModel {
     'id':        id,
     'full_name': fullName,
     'username':  username,
-    'nip':       nip,
+    'nipp':      nipp,
     'role':      role,
     'is_active': isActive,
   };

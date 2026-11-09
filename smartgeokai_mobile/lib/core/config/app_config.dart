@@ -1,16 +1,12 @@
-
 import 'package:flutter/foundation.dart';
 
 class AppConfig {
+  // Opsional: flutter run --dart-define=API_BASE_URL=http://192.168.x.x:8000/api
+  static const String _override = String.fromEnvironment('API_BASE_URL');
+
   static String get baseUrl {
-    if (kIsWeb) {
-      return 'http://127.0.0.1:8000/api';
-    }
-
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://192.168.1.2:8000/api';
-    }
-
+    if (_override.isNotEmpty) return _override;
+    // Web, Android (lewat adb reverse), dan platform lain sama-sama 127.0.0.1
     return 'http://127.0.0.1:8000/api';
   }
 

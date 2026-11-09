@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../services/profile_service.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/field_limits.dart';
 import '../../../shared/widgets/app_text_field.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -17,7 +18,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   final _service = ProfileService();
   late final TextEditingController _nameCtrl;
-  late final TextEditingController _nipCtrl;
+  late final TextEditingController _nippCtrl;
 
   bool _saving = false;
   Map<String, String> _serverErrors = {};
@@ -28,13 +29,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     super.initState();
     final user = context.read<AuthProvider>().user;
     _nameCtrl = TextEditingController(text: user?.fullName ?? '');
-    _nipCtrl  = TextEditingController(text: user?.nip ?? '');
+    _nippCtrl = TextEditingController(text: user?.nipp ?? '');
   }
 
   @override
   void dispose() {
     _nameCtrl.dispose();
-    _nipCtrl.dispose();
+    _nippCtrl.dispose();
     super.dispose();
   }
 
@@ -58,9 +59,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     });
 
     final fullName = _nameCtrl.text.trim();
-    final nip      = _nipCtrl.text.trim();
+    final nipp     = _nippCtrl.text.trim();
 
-    final result = await _service.updateProfile(fullName: fullName, nip: nip);
+    final result =
+        await _service.updateProfile(fullName: fullName, nipp: nipp);
     if (!mounted) return;
 
     if (result.unauthorized) {
@@ -74,7 +76,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       final auth    = context.read<AuthProvider>();
       final current = auth.user;
       final updated =
-          result.user ?? current?.copyWith(fullName: fullName, nip: nip);
+          result.user ?? current?.copyWith(fullName: fullName, nipp: nipp);
       if (updated != null) await auth.setUser(updated);
       if (!mounted) return;
 
@@ -145,32 +147,38 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   icon: Icons.person_outline_rounded,
                   keyboardType: TextInputType.name,
                   textInputAction: TextInputAction.next,
+                  maxLength: FieldLimits.fullNameMax,
                   errorText: _serverErrors['full_name'],
                   onChanged: (_) => _clearError('full_name'),
                   validator: (v) {
                     final value = v?.trim() ?? '';
                     if (value.isEmpty) return 'Nama tidak boleh kosong';
                     if (value.length < 3) return 'Nama minimal 3 karakter';
+                    if (value.length > FieldLimits.fullNameMax) {
+                      return 'Nama maksimal ${FieldLimits.fullNameMax} karakter';
+                    }
                     return null;
                   },
                 ),
                 const SizedBox(height: 20),
                 AppTextField(
-                  controller: _nipCtrl,
-                  label: 'NIP',
-                  hint: 'Masukkan NIP',
+                  controller: _nippCtrl,
+                  label: 'NIPP',
+                  hint: 'Masukkan NIPP',
                   icon: Icons.badge_outlined,
                   keyboardType: TextInputType.number,
                   textInputAction: TextInputAction.done,
-                  maxLength: 25,
+                  maxLength: FieldLimits.nippMax,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  errorText: _serverErrors['nip'],
-                  onChanged: (_) => _clearError('nip'),
+                  errorText: _serverErrors['nipp'],
+                  onChanged: (_) => _clearError('nipp'),
                   onSubmitted: (_) => _save(),
                   validator: (v) {
                     final value = v?.trim() ?? '';
-                    if (value.isEmpty) return 'NIP tidak boleh kosong';
-                    if (value.length < 8) return 'NIP minimal 8 digit';
+                    if (value.isEmpty) return 'NIPP tidak boleh kosong';
+                    if (value.length > FieldLimits.nippMax) {
+                      return 'NIPP maksimal ${FieldLimits.nippMax} digit';
+                    }
                     return null;
                   },
                 ),

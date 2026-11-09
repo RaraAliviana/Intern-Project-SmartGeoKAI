@@ -25,15 +25,15 @@ class ProfileService {
     return _run(() => ApiClient.instance.get(ApiConstants.me));
   }
 
-  // PUT /profile  { full_name, nip }
+  // PUT /profile  { full_name, nipp }
   Future<ProfileResult> updateProfile({
     required String fullName,
-    required String nip,
+    required String nipp,
   }) {
     return _run(
       () => ApiClient.instance.put(
         ApiConstants.me,
-        data: {'full_name': fullName, 'nip': nip},
+        data: {'full_name': fullName, 'nipp': nipp},
       ),
       okMessage: 'Profil berhasil diperbarui.',
     );

@@ -110,7 +110,7 @@ class AuthService {
           id: user.id,
           name: user.fullName,
           role: user.role,
-          nip: user.nip,
+          nipp: user.nipp,
         );
 
         return AuthResult(

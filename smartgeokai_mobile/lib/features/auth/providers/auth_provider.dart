@@ -30,7 +30,7 @@ class AuthProvider extends ChangeNotifier {
           id:       userInfo['id']   as int,
           fullName: userInfo['name'] as String,
           username: '',
-          nip:      userInfo['nip']  as String? ?? '',
+          nipp:     userInfo['nipp'] as String? ?? '',
           role:     userInfo['role'] as String? ?? 'petugas',
           isActive: true,
         );
@@ -78,7 +78,7 @@ class AuthProvider extends ChangeNotifier {
       id:   user.id,
       name: user.fullName,
       role: user.role,
-      nip:  user.nip,
+      nipp: user.nipp,
     );
     notifyListeners();
   }

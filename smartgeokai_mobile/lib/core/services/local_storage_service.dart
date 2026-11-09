@@ -5,7 +5,9 @@ class LocalStorageService {
   static const String _userIdKey   = 'user_id';
   static const String _userNameKey = 'user_name';
   static const String _userRoleKey = 'user_role';
-  static const String _userNipKey  = 'user_nip';
+  static const String _userNippKey = 'user_nipp';
+  // Kunci lama (sebelum NIP diganti NIPP), hanya dibaca untuk migrasi
+  static const String _legacyUserNipKey = 'user_nip';
 
   static Future<void> saveToken(String token) => SecureStorage.saveToken(token);
   static Future<String?> getToken() => SecureStorage.getToken();
@@ -15,13 +17,14 @@ class LocalStorageService {
     required int id,
     required String name,
     required String role,
-    required String nip,
+    required String nipp,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_userIdKey, id);
     await prefs.setString(_userNameKey, name);
     await prefs.setString(_userRoleKey, role);
-    await prefs.setString(_userNipKey, nip);
+    await prefs.setString(_userNippKey, nipp);
+    await prefs.remove(_legacyUserNipKey);
   }
 
   static Future<Map<String, dynamic>?> getUserInfo() async {
@@ -29,11 +32,12 @@ class LocalStorageService {
     final id   = prefs.getInt(_userIdKey);
     final name = prefs.getString(_userNameKey);
     final role = prefs.getString(_userRoleKey);
-    final nip  = prefs.getString(_userNipKey);
+    final nipp = prefs.getString(_userNippKey) ??
+        prefs.getString(_legacyUserNipKey);
 
     if (id == null || name == null) return null;
 
-    return {'id': id, 'name': name, 'role': role, 'nip': nip};
+    return {'id': id, 'name': name, 'role': role, 'nipp': nipp};
   }
 
   static Future<void> clearAll() async {

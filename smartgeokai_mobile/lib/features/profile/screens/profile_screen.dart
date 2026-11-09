@@ -112,7 +112,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           icon: Icons.edit_rounded,
                           color: AppColors.primary,
                           title: 'Edit Profil',
-                          subtitle: 'Ubah nama dan NIP',
+                          subtitle: 'Ubah nama dan NIPP',
                           onTap: user == null
                               ? null
                               : () => Navigator.push(
@@ -269,7 +269,7 @@ class _InfoCard extends StatelessWidget {
     final username =
         (user?.username.isNotEmpty ?? false) ? user!.username : '-';
 
-    final nip = (user?.nip.isNotEmpty ?? false) ? user!.nip : '-';
+    final nipp = (user?.nipp.isNotEmpty ?? false) ? user!.nipp : '-';
 
     final active = user?.isActive ?? true;
 
@@ -278,8 +278,8 @@ class _InfoCard extends StatelessWidget {
         children: [
           _InfoRow(
             icon: Icons.badge_rounded,
-            label: 'NIP',
-            value: nip,
+            label: 'NIPP',
+            value: nipp,
           ),
           const _TileDivider(),
           _InfoRow(
